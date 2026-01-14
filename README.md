@@ -6,6 +6,17 @@ An open-source local market structure analysis terminal for OHLCV-based trading 
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-blue.svg)
+![Version](https://img.shields.io/badge/version-0.4.0-green.svg)
+
+---
+
+## Screenshots
+
+### Homepage
+![Homepage](docs/images/homepage.png)
+
+### Analysis Detail
+![Detail](docs/images/detail.png)
 
 ---
 
@@ -17,7 +28,9 @@ Type a ticker → Get **structure + behavior probabilities + evidence + timeline
 |---------|-------------|
 | **Market Structure** | Regime detection (trend/range), support/resistance zones |
 | **Behavior Inference** | Probability distribution (accumulation/shakeout/markup/distribution/markdown) |
-| **Evidence Pack** | Traceable metrics for each inference |
+| **Evidence Pack** | Traceable metrics for each inference (click to locate on chart) |
+| **Breakout Status** | Volume ratio, confirm closes, state tracking |
+| **Signals** | Real-time signal detection with timestamps |
 | **Stateful Timeline** | Records structural changes over time |
 | **Conditional Playbook** | Plan A/B with entry, target, invalidation |
 
@@ -34,8 +47,8 @@ Type a ticker → Get **structure + behavior probabilities + evidence + timeline
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/user/klinelens.git
-cd klinelens
+git clone https://github.com/songzhiyuan98/KLineLens.git
+cd KLineLens
 
 # 2. Copy environment template
 cp .env.example .env
@@ -48,19 +61,10 @@ docker compose up --build
 # API Docs: http://localhost:8000/docs
 ```
 
-Or use Make:
-
-```bash
-cp .env.example .env
-make up
-```
-
 ### Stopping Services
 
 ```bash
 docker compose down
-# or
-make down
 ```
 
 ---
@@ -73,25 +77,48 @@ Edit `.env` to customize:
 # Data provider (yahoo is free, no API key needed)
 PROVIDER=yahoo
 
+# Optional: Alpaca (free, with volume data)
+# PROVIDER=alpaca
+# ALPACA_API_KEY=your_key
+# ALPACA_API_SECRET=your_secret
+
 # Cache TTL (seconds)
 CACHE_TTL=60
 
 # Ports
 API_PORT=8000
 WEB_PORT=3000
-
-# Auto-refresh interval (seconds)
-REFRESH_SECONDS=60
 ```
 
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed configuration options.
+See [docs/PROVIDER.md](docs/PROVIDER.md) for data provider options.
+
+---
+
+## Features
+
+### Language Support
+- Chinese (中文) - default
+- English
+
+Toggle in Settings page. Preference is persisted in localStorage.
+
+### Supported Tickers
+Any US stock ticker available through Yahoo Finance:
+- Individual stocks: `AAPL`, `TSLA`, `NVDA`, `GOOGL`, `MSFT`
+- ETFs: `SPY`, `QQQ`, `IWM`, `DIA`
+- Cryptocurrencies: `BTC-USD`, `ETH-USD`
+
+### Timeframes
+- 1 minute (intraday bias)
+- 5 minutes (intraday bias)
+- Daily (trend analysis)
 
 ---
 
 ## Project Structure
 
 ```
-klinelens/
+KLineLens/
 ├── apps/
 │   ├── web/                 # Next.js frontend
 │   └── api/                 # FastAPI backend
@@ -100,7 +127,6 @@ klinelens/
 ├── docs/                    # Documentation
 ├── docker-compose.yml       # Docker orchestration
 ├── .env.example             # Environment template
-├── Makefile                 # Common commands
 └── README.md
 ```
 
@@ -110,13 +136,14 @@ klinelens/
 
 | Document | Purpose |
 |----------|---------|
-| [MASTER_SPEC.md](MASTER_SPEC.md) | Project constitution |
 | [docs/PRD.md](docs/PRD.md) | Product requirements |
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Docker setup guide |
+| [docs/UX_SPEC.md](docs/UX_SPEC.md) | UI specification |
 | [docs/API.md](docs/API.md) | REST API reference |
 | [docs/ENGINE_SPEC.md](docs/ENGINE_SPEC.md) | Algorithm specification |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture |
 | [docs/PROVIDER.md](docs/PROVIDER.md) | Data provider guide |
+| [docs/I18N.md](docs/I18N.md) | Internationalization |
+| [docs/CHANGELOG.md](docs/CHANGELOG.md) | Version history |
 
 ---
 
@@ -125,7 +152,7 @@ klinelens/
 ### Local Development (without Docker)
 
 ```bash
-# 1. Install Python dependencies at root level
+# 1. Install Python dependencies
 pip install -r requirements.txt
 
 # 2. Install Node dependencies
@@ -140,16 +167,6 @@ cd apps/web
 npm run dev
 ```
 
-### Build for Production
-
-```bash
-# Build web app
-cd apps/web && npm run build
-
-# Or build all
-npm run build
-```
-
 ### Running Tests
 
 ```bash
@@ -158,28 +175,14 @@ cd packages/core && python3 -m pytest tests/ -v
 
 # API tests
 cd apps/api && python3 -m pytest tests/ -v
-
-# Or use Make
-make test
 ```
-
-### Supported Tickers
-
-The application supports any US stock ticker symbol available through Yahoo Finance:
-- Individual stocks: `AAPL`, `TSLA`, `NVDA`, `GOOGL`, `MSFT`
-- ETFs: `SPY`, `QQQ`, `IWM`, `DIA`
-- Cryptocurrencies: `BTC-USD`, `ETH-USD`
-
-### Language Support
-
-The app supports Chinese and English. Toggle the language in the Settings page. Language preference is persisted in localStorage.
 
 ---
 
 ## Roadmap
 
-- [x] **MVP**: Yahoo Finance provider, in-memory cache, basic UI
-- [ ] **V1**: SQLite persistence, Polygon/TwelveData providers, WebSocket streaming
+- [x] **MVP v0.4.0**: Complete analysis terminal with i18n
+- [ ] **V1**: SQLite persistence, WebSocket streaming
 - [ ] **V2**: LLM narration layer, multi-timeframe alignment
 
 ---
@@ -200,4 +203,4 @@ The app supports Chinese and English. Toggle the language in the Settings page. 
 
 ## Disclaimer
 
-This software is for educational and informational purposes only. It does not constitute financial advice. See [docs/DISCLAIMER.md](docs/DISCLAIMER.md) for full disclaimer.
+This software is for educational and informational purposes only. It does not constitute financial advice. Always do your own research before making any investment decisions. See [docs/DISCLAIMER.md](docs/DISCLAIMER.md) for full disclaimer.
