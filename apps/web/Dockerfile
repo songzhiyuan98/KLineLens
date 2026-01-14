@@ -15,8 +15,8 @@ WORKDIR /app
 # 复制依赖文件
 COPY package.json package-lock.json* ./
 
-# 安装依赖
-RUN npm ci --legacy-peer-deps
+# 安装依赖（使用 npm install 因为是 monorepo 结构）
+RUN npm install --legacy-peer-deps
 
 # 构建阶段
 FROM base AS builder
