@@ -147,17 +147,62 @@ Use `Docs/PLAN.md` milestones. Implement in order:
 
 ## 5. Code Quality Rules
 
-### 5.1 Python (Core + API)
+### 5.1 Chinese Comments (Required)
+All code files MUST include:
+- **File header comment**: Chinese description of what this file does
+- **Function/class comments**: Chinese explanation of purpose
+- **Complex logic comments**: Chinese inline comments for non-obvious code
+
+Example for Python:
+```python
+"""
+缓存管理模块
+
+提供内存缓存功能，支持 TTL（生存时间）过期机制。
+用于缓存 K 线数据，减少对数据提供商的请求频率。
+"""
+
+class MemoryCache:
+    """
+    内存缓存类
+
+    使用字典存储缓存数据，支持自动过期清理。
+    """
+
+    def get(self, key: str):
+        """获取缓存值，如果已过期则返回 None"""
+        pass
+```
+
+Example for TypeScript:
+```typescript
+/**
+ * 详情页面组件
+ *
+ * 显示股票的 K 线图和分析面板，包括：
+ * - 市场状态卡片
+ * - 行为概率卡片
+ * - 证据卡片
+ * - 时间线卡片
+ * - 交易剧本卡片
+ */
+export default function TickerDetail() {
+  // ...
+}
+```
+
+### 5.2 Python (Core + API)
 - Type hints required
-- Docstrings for public functions
+- Docstrings for public functions (in Chinese)
 - Unit tests for core logic
 
-### 5.2 TypeScript (Web)
+### 5.3 TypeScript (Web)
 - TypeScript strict mode
 - Types for API responses
 - Component props typed
+- JSDoc comments in Chinese
 
-### 5.3 Testing
+### 5.4 Testing
 - Core: pytest unit tests
 - API: Integration tests for endpoints
 - Web: Smoke tests for pages
