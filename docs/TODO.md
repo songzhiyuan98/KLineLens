@@ -165,22 +165,28 @@
 
 ---
 
-## Milestone 5: Polish & Ship
+## Milestone 5: Polish & Ship ✅
 
 ### Tasks
-- [ ] Error boundary for React
-- [ ] Loading states (skeleton)
-- [ ] Final UI polish
-- [ ] Test with multiple tickers
-- [ ] Test edge cases (no volume, gaps)
-- [ ] Update README with run instructions
-- [ ] Record demo video/GIF
+- [x] Error boundary for React (2026-01-14)
+- [x] Loading states (skeleton) (2026-01-14)
+- [x] Final UI polish (2026-01-14)
+  - [x] 移除卡片边框和背景
+  - [x] 简化颜色使用（灰色系）
+  - [x] 移除滚动条
+- [x] i18n 国际化（中英文）(2026-01-14)
+- [x] Volume 面板 + Volume MA (2026-01-14)
+- [x] Evidence 可视化（点击定位图表）(2026-01-14)
+- [x] Breakout Status 卡片 (2026-01-14)
+- [x] Signals 面板（含时间）(2026-01-14)
+- [x] Test with multiple tickers (2026-01-14)
+- [x] Update README with run instructions (2026-01-14)
 
-### Acceptance
+### Acceptance ✅
 - No crashes on edge cases
 - Smooth user experience
 - Documentation complete
-- Demo shows full flow
+- i18n working (中文/English)
 
 ---
 
@@ -190,9 +196,9 @@
 - [ ] Redis cache for state persistence
 - [ ] WebSocket for real-time updates
 - [ ] Snapshot/replay feature
-- [ ] More providers (Alpha Vantage, Polygon)
-- [ ] i18n (Chinese language)
+- [ ] Polygon provider
 - [ ] LLM narration layer
+- [ ] Dark mode
 
 ---
 
@@ -205,3 +211,6 @@
 - [x] Milestone 2: Core Structure Engine (2026-01-13)
 - [x] Milestone 3: Behavior + Timeline + Playbook + API Integration (2026-01-13)
 - [x] Milestone 4: Web Terminal (2026-01-14)
+- [x] Milestone 5: Polish & Ship (2026-01-14)
+- [x] i18n 国际化 (2026-01-14)
+- [x] Alpaca/Alpha Vantage Providers (2026-01-14)

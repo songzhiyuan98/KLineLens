@@ -20,7 +20,7 @@ KLineLens is a **local tool** — users run it on their own machine and configur
 
 ## 2. Available Providers
 
-### 2.1 Yahoo Finance (MVP - Default)
+### 2.1 Yahoo Finance (Default)
 
 **Status**: ✅ Implemented
 
@@ -32,10 +32,11 @@ KLineLens is a **local tool** — users run it on their own machine and configur
 | Data Delay | 15-20 minutes |
 | Timeframes | 1m, 5m, 1d |
 | Coverage | US stocks, ETFs, crypto, forex |
+| Volume Quality | ⚠️ 分钟级数据有缺失 |
 
 **Configuration**:
 ```bash
-PROVIDER=yahoo
+PROVIDER=yfinance
 ```
 
 **Limitations**:
@@ -45,13 +46,86 @@ PROVIDER=yahoo
 | ~2000 req/day | Rate limit | Cache aggressively (60s TTL) |
 | 15-20 min delay | Not real-time | Acceptable for structure analysis |
 | No pre/post market 1m | Limited extended hours | Use 1d for extended hours |
+| **分钟成交量不稳定** | 分析准确度降低 | 使用 Alpha Vantage |
 
 **Rate Limit Protection**:
 - Frontend enforces 60s minimum refresh interval
 - Backend caches responses for 60 seconds
 - Do NOT manually refresh faster than 60s
 
-### 2.2 Polygon.io (V1 - Planned)
+### 2.2 Alpaca (Recommended - Free + Volume)
+
+**Status**: ✅ Implemented
+
+| Feature | Value |
+|---------|-------|
+| Cost | **完全免费** |
+| API Key | Required (免费注册) |
+| Rate Limit | 无明显限制 |
+| Data Delay | 接近实时 |
+| Timeframes | 1m, 5m, 1d |
+| Coverage | 美股 |
+| Volume Quality | ✅ 分钟级成交量（IEX 口径） |
+
+**Configuration**:
+```bash
+PROVIDER=alpaca
+ALPACA_API_KEY=your_api_key_here
+ALPACA_API_SECRET=your_api_secret_here
+```
+
+**Get API Key**:
+1. 访问 https://alpaca.markets/
+2. 注册账户（免费，无需入金）
+3. 在 Dashboard 获取 API Key 和 Secret
+4. 复制到 `.env` 文件
+
+**Advantages**:
+| Feature | Benefit |
+|---------|---------|
+| **完全免费** | 无请求次数限制 |
+| 分钟级成交量 | IEX 交易所数据，约占全市场 2-3% |
+| 接近实时 | 比 yfinance 延迟更低 |
+| 专业级 API | 被量化交易广泛使用 |
+
+**Limitations**:
+| Limitation | Impact | Workaround |
+|------------|--------|------------|
+| IEX 口径成交量 | 非全市场成交量 | 用于趋势分析足够 |
+| 仅美股 | 不支持加密货币 | 使用 yfinance 获取加密 |
+| 需要 API Key | 需要注册 | 免费注册，无信用卡要求 |
+
+### 2.3 Alpha Vantage
+
+**Status**: ✅ Implemented
+
+| Feature | Value |
+|---------|-------|
+| Cost | Free (25 req/day) |
+| API Key | Required (免费注册) |
+| Rate Limit | 25 requests/day (free tier) |
+| Data Delay | 15-20 minutes |
+| Timeframes | 1m, 5m, 1d |
+| Coverage | US stocks, ETFs, forex |
+| Volume Quality | ✅ 高质量分钟级成交量 |
+
+**Configuration**:
+```bash
+PROVIDER=alphavantage
+ALPHAVANTAGE_API_KEY=your_api_key_here
+```
+
+**Get API Key**:
+1. 访问 https://www.alphavantage.co/support/#api-key
+2. 填写邮箱，选择 "Free" tier
+3. 复制 API Key 到 `.env` 文件
+
+**Limitations**:
+| Limitation | Impact | Workaround |
+|------------|--------|------------|
+| 25 req/day (free) | 限制请求次数 | 利用缓存，避免频繁刷新 |
+
+### 2.4 Polygon.io (Planned)
 
 **Status**: 🔜 Planned for V1
 
@@ -95,9 +169,17 @@ TWELVEDATA_API_KEY=your_api_key_here
 
 1. Edit `.env` file:
 ```bash
-# Change from yahoo to polygon
-PROVIDER=polygon
-POLYGON_API_KEY=your_key_here
+# 使用 Alpaca（推荐，免费 + 分钟成交量）
+PROVIDER=alpaca
+ALPACA_API_KEY=your_key_here
+ALPACA_API_SECRET=your_secret_here
+
+# 或使用 Yahoo Finance（免费，无需 Key，分钟成交量有缺失）
+PROVIDER=yfinance
+
+# 或使用 Alpha Vantage（25次/天限制）
+PROVIDER=alphavantage
+ALPHAVANTAGE_API_KEY=your_key_here
 ```
 
 2. Restart services:
@@ -108,16 +190,27 @@ docker compose up
 
 ### 3.2 Provider-Specific Notes
 
-**Yahoo Finance**:
-- No key needed, just set `PROVIDER=yahoo`
-- Best for personal use with moderate request frequency
+**Yahoo Finance** (yfinance):
+- No key needed, just set `PROVIDER=yfinance`
+- Best for quick testing or crypto data
+- ⚠️ 分钟级成交量数据有缺失
 
-**Polygon.io** (V1):
+**Alpaca** (alpaca) - **推荐**:
+- Get API key from https://alpaca.markets/
+- 完全免费，无请求限制
+- ✅ 有分钟级成交量（IEX 口径）
+
+**Alpha Vantage** (alphavantage):
+- Get API key from https://www.alphavantage.co/support/#api-key
+- Free tier: 25 requests/day
+- 高质量成交量数据
+
+**Polygon.io** (Planned):
 - Get API key from https://polygon.io
 - Free tier: 5 API calls/min, EOD data
 - Paid tier: Real-time data, higher limits
 
-**TwelveData** (V1):
+**TwelveData** (Planned):
 - Get API key from https://twelvedata.com
 - Free tier: 800 API credits/day
 - Good global market coverage

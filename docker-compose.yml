@@ -16,13 +16,16 @@ services:
     ports:
       - "${API_PORT:-8000}:8000"
     environment:
-      - PROVIDER=${PROVIDER:-yahoo}
+      - PROVIDER=${PROVIDER:-yfinance}
       - CACHE_TTL=${CACHE_TTL:-60}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - CORS_ORIGINS=http://localhost:3000,http://localhost:${WEB_PORT:-3000}
-      # 可选：付费 Provider API Keys
-      - POLYGON_API_KEY=${POLYGON_API_KEY:-}
-      - TWELVEDATA_API_KEY=${TWELVEDATA_API_KEY:-}
+      # Provider API Keys（根据 PROVIDER 设置使用）
+      # Alpaca（推荐，免费 + 分钟成交量）
+      - ALPACA_API_KEY=${ALPACA_API_KEY:-}
+      - ALPACA_API_SECRET=${ALPACA_API_SECRET:-}
+      # Alpha Vantage（25次/天）
+      - ALPHAVANTAGE_API_KEY=${ALPHAVANTAGE_API_KEY:-}
     volumes:
       # 开发模式：挂载源代码实现热重载
       - ./apps/api/src:/app/src:ro

@@ -28,7 +28,7 @@ from pydantic import BaseModel
 
 from .config import settings
 from .cache import get_cache, cache_key
-from .providers import YFinanceProvider, TickerNotFoundError, RateLimitError, ProviderError
+from .providers import get_provider, TickerNotFoundError, RateLimitError, ProviderError
 
 # 导入 core 模块
 # 支持两种环境：
@@ -105,7 +105,25 @@ app.add_middleware(
 )
 
 # 初始化数据提供者和缓存
-provider = YFinanceProvider()
+# 根据配置选择数据提供者
+# - yfinance: 免费，无需 Key（默认）
+# - alpaca: 免费，需要 Key，有分钟成交量（推荐）
+# - alphavantage: 25次/天限制
+def _get_provider_api_key():
+    """根据 provider 类型获取对应的 API 凭证"""
+    if settings.provider == "alpaca":
+        return settings.alpaca_api_key, settings.alpaca_api_secret
+    elif settings.provider == "alphavantage":
+        return settings.alphavantage_api_key, None
+    return None, None
+
+api_key, api_secret = _get_provider_api_key()
+provider = get_provider(
+    name=settings.provider,
+    api_key=api_key,
+    api_secret=api_secret,
+)
+logger.info(f"使用数据提供者: {provider.name}")
 cache = get_cache(default_ttl=settings.cache_ttl)
 
 

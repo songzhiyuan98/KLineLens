@@ -11,7 +11,11 @@
     "build:web": "npm run build --workspace=apps/web",
     "lint": "npm run lint --workspace=apps/web"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "autoprefixer": "^10.4.23",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18"
+  },
   "engines": {
     "node": ">=18.0.0"
   }

@@ -90,7 +90,12 @@ class TimelineManager:
         events_to_emit = []
 
         if old_state is None:
-            # 首次更新，不发出事件
+            # 首次更新，发出初始化事件
+            events_to_emit.append((
+                "initialized",
+                0.0,
+                f"event.initialized.{new_state.regime}_{new_state.dominant_behavior}"
+            ))
             return events_to_emit
 
         # 1. 检查趋势状态改变

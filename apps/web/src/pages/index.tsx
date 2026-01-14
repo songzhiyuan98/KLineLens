@@ -8,11 +8,13 @@
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/router';
 import { Layout } from '../components';
+import { useI18n } from '../lib/i18n';
 
 export default function Home() {
   const [ticker, setTicker] = useState('');
   const [error, setError] = useState('');
   const router = useRouter();
+  const { t } = useI18n();
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -22,12 +24,12 @@ export default function Home() {
 
     // 验证输入
     if (!sanitized) {
-      setError('Please enter a ticker symbol');
+      setError(t('error_empty_ticker'));
       return;
     }
 
     if (!/^[A-Z0-9\-\.]+$/.test(sanitized)) {
-      setError('Invalid ticker format');
+      setError(t('error_invalid_ticker'));
       return;
     }
 
@@ -62,7 +64,7 @@ export default function Home() {
           fontSize: '1.1rem',
           marginBottom: '2.5rem',
         }}>
-          Market Structure Analysis Terminal
+          {t('subtitle')}
         </p>
 
         {/* 搜索表单 */}
@@ -83,7 +85,7 @@ export default function Home() {
               type="text"
               value={ticker}
               onChange={(e) => setTicker(e.target.value)}
-              placeholder="Enter ticker (e.g., TSLA)"
+              placeholder={t('search_placeholder')}
               style={{
                 flex: 1,
                 padding: '0.875rem 1rem',
@@ -112,7 +114,7 @@ export default function Home() {
               onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#2bbbad'}
               onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#26a69a'}
             >
-              Analyze
+              {t('analyze')}
             </button>
           </div>
 
@@ -137,7 +139,7 @@ export default function Home() {
             fontSize: '0.875rem',
             marginBottom: '0.75rem',
           }}>
-            Popular tickers
+            {t('quick_access')}
           </p>
           <div style={{
             display: 'flex',
@@ -145,10 +147,10 @@ export default function Home() {
             flexWrap: 'wrap',
             justifyContent: 'center',
           }}>
-            {['TSLA', 'AAPL', 'NVDA', 'SPY', 'QQQ'].map((t) => (
+            {['TSLA', 'AAPL', 'NVDA', 'SPY', 'QQQ'].map((tickerItem) => (
               <button
-                key={t}
-                onClick={() => router.push(`/t/${t}`)}
+                key={tickerItem}
+                onClick={() => router.push(`/t/${tickerItem}`)}
                 style={{
                   padding: '0.5rem 1rem',
                   fontSize: '0.875rem',
@@ -170,7 +172,7 @@ export default function Home() {
                   e.currentTarget.style.color = '#666';
                 }}
               >
-                {t}
+                {tickerItem}
               </button>
             ))}
           </div>

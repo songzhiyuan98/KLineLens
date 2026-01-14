@@ -27,15 +27,24 @@ class Settings(BaseSettings):
     所有配置项都有默认值，可以直接使用。
 
     属性:
-        provider: 数据提供者名称
+        provider: 数据提供者名称 (yfinance, alphavantage)
         cache_type: 缓存类型 (memory/redis)
         cache_ttl: 缓存生存时间（秒）
         log_level: 日志级别
         cors_origins: 允许的跨域来源，多个用逗号分隔
+        alphavantage_api_key: Alpha Vantage API 密钥（使用 alphavantage 时必需）
     """
 
     # 数据提供者配置
+    # yfinance: 免费，无需 Key，分钟成交量有缺失
+    # alpaca: 免费，需要 Key，有分钟成交量（IEX 口径）- 推荐
+    # alphavantage: 25次/天，需要 Key
     provider: str = "yfinance"
+
+    # API Keys（根据选择的 provider 使用）
+    alpaca_api_key: str = ""  # Alpaca API Key
+    alpaca_api_secret: str = ""  # Alpaca API Secret
+    alphavantage_api_key: str = ""  # Alpha Vantage API Key
 
     # 缓存配置
     cache_type: str = "memory"  # memory 或 redis

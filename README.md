@@ -125,26 +125,54 @@ klinelens/
 ### Local Development (without Docker)
 
 ```bash
-# Terminal 1: API
-cd apps/api
+# 1. Install Python dependencies at root level
 pip install -r requirements.txt
+
+# 2. Install Node dependencies
+npm install
+
+# Terminal 1: API (port 8000)
+cd apps/api
 uvicorn src.main:app --reload --port 8000
 
-# Terminal 2: Web
+# Terminal 2: Web (port 3000)
 cd apps/web
-npm install
 npm run dev
+```
+
+### Build for Production
+
+```bash
+# Build web app
+cd apps/web && npm run build
+
+# Or build all
+npm run build
 ```
 
 ### Running Tests
 
 ```bash
+# Core engine tests
+cd packages/core && python3 -m pytest tests/ -v
+
 # API tests
 cd apps/api && python3 -m pytest tests/ -v
 
 # Or use Make
 make test
 ```
+
+### Supported Tickers
+
+The application supports any US stock ticker symbol available through Yahoo Finance:
+- Individual stocks: `AAPL`, `TSLA`, `NVDA`, `GOOGL`, `MSFT`
+- ETFs: `SPY`, `QQQ`, `IWM`, `DIA`
+- Cryptocurrencies: `BTC-USD`, `ETH-USD`
+
+### Language Support
+
+The app supports Chinese and English. Toggle the language in the Settings page. Language preference is persisted in localStorage.
 
 ---
 
