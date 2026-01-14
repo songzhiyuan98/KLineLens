@@ -26,6 +26,7 @@ from .structure import find_swing_points, classify_regime, cluster_zones, Breako
 from .behavior import infer_behavior, scores_to_probabilities
 from .timeline import TimelineManager, TimelineState
 from .playbook import generate_playbook
+from .backtest import run_backtest, aggregate_results, print_report, BacktestResult, AggregateResult
 
 # 导出类型
 from .models import (
@@ -57,6 +58,12 @@ __all__ = [
     "TimelineState",
     # Playbook
     "generate_playbook",
+    # Backtest
+    "run_backtest",
+    "aggregate_results",
+    "print_report",
+    "BacktestResult",
+    "AggregateResult",
     # 类型
     "Bar",
     "Zone",

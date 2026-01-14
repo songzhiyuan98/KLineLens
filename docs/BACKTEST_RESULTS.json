@@ -1,0 +1,172 @@
+{
+  "generated_at": "2026-01-14T04:21:27.965619",
+  "config": {
+    "tickers": [
+      "AAPL",
+      "MSFT",
+      "GOOGL",
+      "AMZN",
+      "NVDA",
+      "TSLA",
+      "AMD",
+      "META",
+      "NFLX",
+      "CRM",
+      "SPY",
+      "QQQ",
+      "IWM",
+      "DIA",
+      "JPM",
+      "V",
+      "UNH",
+      "HD",
+      "PG",
+      "KO"
+    ],
+    "timeframe": "1d",
+    "period": "6mo"
+  },
+  "summary": {
+    "tickers_evaluated": 19,
+    "total_bars": 2432,
+    "period_days": 2432,
+    "breakout_accuracy": 0.989,
+    "fakeout_detection_rate": 0.889,
+    "signal_hit_rate": 0.738
+  },
+  "per_ticker": [
+    {
+      "ticker": "MSFT",
+      "bars": 128,
+      "breakout_accuracy": 1.0,
+      "fakeout_detection": 1.0,
+      "signal_hit_rate": 0.5
+    },
+    {
+      "ticker": "GOOGL",
+      "bars": 128,
+      "breakout_accuracy": 1.0,
+      "fakeout_detection": 0,
+      "signal_hit_rate": 1.0
+    },
+    {
+      "ticker": "AMZN",
+      "bars": 128,
+      "breakout_accuracy": 1.0,
+      "fakeout_detection": 1.0,
+      "signal_hit_rate": 0.333
+    },
+    {
+      "ticker": "NVDA",
+      "bars": 128,
+      "breakout_accuracy": 0,
+      "fakeout_detection": 0,
+      "signal_hit_rate": 0
+    },
+    {
+      "ticker": "TSLA",
+      "bars": 128,
+      "breakout_accuracy": 1.0,
+      "fakeout_detection": 0,
+      "signal_hit_rate": 1.0
+    },
+    {
+      "ticker": "AMD",
+      "bars": 128,
+      "breakout_accuracy": 1.0,
+      "fakeout_detection": 0,
+      "signal_hit_rate": 0.889
+    },
+    {
+      "ticker": "META",
+      "bars": 128,
+      "breakout_accuracy": 1.0,
+      "fakeout_detection": 1.0,
+      "signal_hit_rate": 0.643
+    },
+    {
+      "ticker": "NFLX",
+      "bars": 128,
+      "breakout_accuracy": 1.0,
+      "fakeout_detection": 1.0,
+      "signal_hit_rate": 0.6
+    },
+    {
+      "ticker": "CRM",
+      "bars": 128,
+      "breakout_accuracy": 1.0,
+      "fakeout_detection": 1.0,
+      "signal_hit_rate": 0.786
+    },
+    {
+      "ticker": "SPY",
+      "bars": 128,
+      "breakout_accuracy": 1.0,
+      "fakeout_detection": 0,
+      "signal_hit_rate": 0.667
+    },
+    {
+      "ticker": "QQQ",
+      "bars": 128,
+      "breakout_accuracy": 1.0,
+      "fakeout_detection": 0,
+      "signal_hit_rate": 1.0
+    },
+    {
+      "ticker": "IWM",
+      "bars": 128,
+      "breakout_accuracy": 1.0,
+      "fakeout_detection": 0,
+      "signal_hit_rate": 1.0
+    },
+    {
+      "ticker": "DIA",
+      "bars": 128,
+      "breakout_accuracy": 1.0,
+      "fakeout_detection": 0,
+      "signal_hit_rate": 1.0
+    },
+    {
+      "ticker": "JPM",
+      "bars": 128,
+      "breakout_accuracy": 1.0,
+      "fakeout_detection": 1.0,
+      "signal_hit_rate": 0.556
+    },
+    {
+      "ticker": "V",
+      "bars": 128,
+      "breakout_accuracy": 1.0,
+      "fakeout_detection": 0.0,
+      "signal_hit_rate": 0.6
+    },
+    {
+      "ticker": "UNH",
+      "bars": 128,
+      "breakout_accuracy": 1.0,
+      "fakeout_detection": 1.0,
+      "signal_hit_rate": 0.8
+    },
+    {
+      "ticker": "HD",
+      "bars": 128,
+      "breakout_accuracy": 1.0,
+      "fakeout_detection": 0,
+      "signal_hit_rate": 0.75
+    },
+    {
+      "ticker": "PG",
+      "bars": 128,
+      "breakout_accuracy": 1.0,
+      "fakeout_detection": 1.0,
+      "signal_hit_rate": 0.667
+    },
+    {
+      "ticker": "KO",
+      "bars": 128,
+      "breakout_accuracy": 0.8,
+      "fakeout_detection": 0,
+      "signal_hit_rate": 0.5
+    }
+  ]
+}

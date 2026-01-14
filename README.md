@@ -38,6 +38,26 @@ Type a ticker → Get **structure + behavior probabilities + evidence + timeline
 
 ---
 
+## Evaluation Results
+
+Backtested on 6 months of daily data across 19 major tickers (MSFT, GOOGL, AMZN, TSLA, META, SPY, QQQ, etc.):
+
+| Metric | Result |
+|--------|--------|
+| **Breakout Accuracy** | 98.9% |
+| **Fakeout Detection Rate** | 88.9% |
+| **Signal Hit Rate** | 73.8% |
+| **Total Trading Days** | 2,432 |
+
+Run your own evaluation:
+```bash
+python scripts/run_backtest.py
+```
+
+See [docs/BACKTEST_RESULTS.json](docs/BACKTEST_RESULTS.json) for detailed per-ticker results.
+
+---
+
 ## Quick Start (Docker)
 
 ### Prerequisites
