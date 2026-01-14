@@ -4,6 +4,37 @@ Detailed record of each GitHub commit with context and changes.
 
 ---
 
+## [02ba430] - 2026-01-13
+
+**Message:** `feat(api): implement market data provider with yfinance (Milestone 1)`
+
+**Milestone:** 1 - Market Data
+
+**Changes:**
+| Type | File | Description |
+|------|------|-------------|
+| Add | `apps/api/src/providers/__init__.py` | Provider package with exports |
+| Add | `apps/api/src/providers/base.py` | Abstract provider interface and Bar dataclass |
+| Add | `apps/api/src/providers/yfinance_provider.py` | Yahoo Finance implementation |
+| Add | `apps/api/src/cache.py` | Memory cache with TTL |
+| Add | `apps/api/src/config.py` | Settings from environment |
+| Modify | `apps/api/src/main.py` | Implement /v1/bars endpoint |
+| Modify | `apps/api/src/__init__.py` | Add Chinese comments |
+| Modify | `packages/core/src/__init__.py` | Add Chinese comments |
+| Modify | `packages/core/src/types.py` | Add Chinese comments |
+| Modify | `packages/core/tests/__init__.py` | Add Chinese comments |
+| Modify | `apps/web/src/pages/_app.tsx` | Add Chinese comments |
+| Modify | `apps/web/src/pages/index.tsx` | Add Chinese comments |
+| Modify | `apps/web/src/pages/t/[ticker].tsx` | Add Chinese comments |
+| Modify | `Claude.md` | Add Chinese comment requirement |
+
+**API Added:**
+- `GET /v1/bars?ticker=TSLA&tf=1m&window=1d` - Fetch OHLCV K-line data
+
+**Result:** Market data API functional. Can fetch 1m/5m/1d bars from Yahoo Finance with caching.
+
+---
+
 ## [bfe86b9] - 2026-01-13
 
 **Message:** `docs: add commit log for tracking GitHub updates`
