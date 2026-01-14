@@ -19,10 +19,52 @@ KLineLens 核心引擎包
 
 __version__ = "0.1.0"
 
-# 将在实现后导出主要函数:
-# from .analyze import analyze_market
-# from .features import calculate_features
-# from .structure import find_swing_points, classify_regime, cluster_zones
-# from .behavior import infer_behavior
-# from .timeline import TimelineManager
-# from .playbook import generate_playbook
+# 导出主要函数
+from .analyze import analyze_market, create_initial_state, AnalysisParams, AnalysisState
+from .features import calculate_features, calculate_atr, calculate_volume_ratio
+from .structure import find_swing_points, classify_regime, cluster_zones, BreakoutFSM, SwingPoint
+from .behavior import infer_behavior, scores_to_probabilities
+from .timeline import TimelineManager, TimelineState
+from .playbook import generate_playbook
+
+# 导出类型
+from .models import (
+    Bar, Zone, Signal, Evidence, TimelineEvent,
+    PlaybookPlan, MarketState, Behavior, AnalysisReport
+)
+
+__all__ = [
+    # 主函数
+    "analyze_market",
+    "create_initial_state",
+    "AnalysisParams",
+    "AnalysisState",
+    # 特征计算
+    "calculate_features",
+    "calculate_atr",
+    "calculate_volume_ratio",
+    # 结构检测
+    "find_swing_points",
+    "classify_regime",
+    "cluster_zones",
+    "BreakoutFSM",
+    "SwingPoint",
+    # 行为推断
+    "infer_behavior",
+    "scores_to_probabilities",
+    # 时间线
+    "TimelineManager",
+    "TimelineState",
+    # Playbook
+    "generate_playbook",
+    # 类型
+    "Bar",
+    "Zone",
+    "Signal",
+    "Evidence",
+    "TimelineEvent",
+    "PlaybookPlan",
+    "MarketState",
+    "Behavior",
+    "AnalysisReport",
+]

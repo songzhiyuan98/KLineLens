@@ -4,50 +4,50 @@
 
 ---
 
-## Milestone 0: Repo & Infrastructure
+## Milestone 0: Repo & Infrastructure ✅
 
 ### Tasks
-- [ ] Initialize monorepo structure
-  - [ ] Create `apps/web/` with Next.js
-  - [ ] Create `apps/api/` with FastAPI
-  - [ ] Create `packages/core/` Python package
-  - [ ] Setup root `package.json` for monorepo scripts
-- [ ] Setup Python virtual environment
-- [ ] Setup TypeScript config for web
-- [ ] Add `.gitignore` for all layers
-- [ ] Create `.env.example` files
+- [x] Initialize monorepo structure (2026-01-13)
+  - [x] Create `apps/web/` with Next.js
+  - [x] Create `apps/api/` with FastAPI
+  - [x] Create `packages/core/` Python package
+  - [x] Setup root `package.json` for monorepo scripts
+- [x] Setup Python virtual environment
+- [x] Setup TypeScript config for web
+- [x] Add `.gitignore` for all layers
+- [x] Create `.env.example` files
 
-### Acceptance
+### Acceptance ✅
 - `npm install` works at root
 - `uvicorn` can start API (returns 404 on /)
 - `npm run dev` starts web (shows Next.js default page)
 
 ---
 
-## Milestone 1: Market Data
+## Milestone 1: Market Data ✅
 
 ### Tasks
-- [ ] Implement `MarketDataProvider` interface
-  - [ ] Define `Bar` dataclass
-  - [ ] Define error types (`TickerNotFoundError`, `RateLimitError`)
-- [ ] Implement `YFinanceProvider`
-  - [ ] `get_bars(ticker, tf, window)`
-  - [ ] `validate_ticker(ticker)`
-  - [ ] Handle timeframe mapping (1m, 5m, 1d)
-- [ ] Implement `GET /v1/bars` endpoint
-  - [ ] Parse query params (ticker, tf, window)
-  - [ ] Call provider
-  - [ ] Return JSON response
-- [ ] Add in-memory cache
-  - [ ] Cache key: `{ticker}:{tf}:{window}`
-  - [ ] TTL: 60s default
-- [ ] Add error handling
-  - [ ] Invalid ticker → 400
-  - [ ] No data → 404
-  - [ ] Rate limit → 429
-  - [ ] Provider error → 502
+- [x] Implement `MarketDataProvider` interface (2026-01-13)
+  - [x] Define `Bar` dataclass
+  - [x] Define error types (`TickerNotFoundError`, `RateLimitError`)
+- [x] Implement `YFinanceProvider`
+  - [x] `get_bars(ticker, tf, window)`
+  - [x] `validate_ticker(ticker)`
+  - [x] Handle timeframe mapping (1m, 5m, 1d)
+- [x] Implement `GET /v1/bars` endpoint
+  - [x] Parse query params (ticker, tf, window)
+  - [x] Call provider
+  - [x] Return JSON response
+- [x] Add in-memory cache
+  - [x] Cache key: `{ticker}:{tf}:{window}`
+  - [x] TTL: 60s default
+- [x] Add error handling
+  - [x] Invalid ticker → 400
+  - [x] No data → 404
+  - [x] Rate limit → 429
+  - [x] Provider error → 502
 
-### Acceptance
+### Acceptance ✅
 - `GET /v1/bars?ticker=TSLA&tf=1m` returns bars JSON
 - `GET /v1/bars?ticker=INVALID123&tf=1m` returns 400/404
 - Second request within 60s hits cache (faster response)
@@ -55,28 +55,28 @@
 
 ---
 
-## Milestone 2: Core Structure Engine
+## Milestone 2: Core Structure Engine ✅
 
 ### Tasks
-- [ ] `features.py` - Feature calculations
-  - [ ] `calculate_atr(bars, period=14)`
-  - [ ] `calculate_volume_ratio(bars, period=30)`
-  - [ ] `calculate_wick_ratios(bar)`
-  - [ ] `calculate_efficiency(bar)`
-- [ ] `structure.py` - Structure detection
-  - [ ] `find_swing_points(bars, n=4)` - Fractal method
-  - [ ] `cluster_zones(points, atr)` - Price binning
-  - [ ] `classify_regime(swings)` - HH/HL/LL/LH analysis
-  - [ ] `BreakoutFSM` class - State machine
-- [ ] `analyze.py` - Main entry point
-  - [ ] `analyze_structure(bars, params)` → partial report
-- [ ] Unit tests
-  - [ ] Test swing points with known data
-  - [ ] Test regime classification (uptrend/downtrend/range)
-  - [ ] Test zone clustering
-  - [ ] Test breakout state machine transitions
+- [x] `features.py` - Feature calculations (2026-01-13)
+  - [x] `calculate_atr(bars, period=14)`
+  - [x] `calculate_volume_ratio(bars, period=30)`
+  - [x] `calculate_wick_ratios(bar)`
+  - [x] `calculate_efficiency(bar)`
+- [x] `structure.py` - Structure detection
+  - [x] `find_swing_points(bars, n=4)` - Fractal method
+  - [x] `cluster_zones(points, atr)` - Price binning
+  - [x] `classify_regime(swings)` - HH/HL/LL/LH analysis
+  - [x] `BreakoutFSM` class - State machine
+- [x] `analyze.py` - Main entry point
+  - [x] `analyze_structure(bars, params)` → partial report
+- [x] Unit tests (42 tests passing)
+  - [x] Test swing points with known data
+  - [x] Test regime classification (uptrend/downtrend/range)
+  - [x] Test zone clustering
+  - [x] Test breakout state machine transitions
 
-### Acceptance
+### Acceptance ✅
 - `find_swing_points()` returns correct peaks/troughs for test data
 - `classify_regime()` returns "uptrend" for HH/HL sequence
 - `cluster_zones()` groups nearby prices into zones
@@ -84,39 +84,38 @@
 
 ---
 
-## Milestone 3: Behavior + Timeline + Playbook
+## Milestone 3: Behavior + Timeline + Playbook ✅
 
 ### Tasks
-- [ ] `behavior.py` - Behavior inference
-  - [ ] `score_accumulation(bars, zones, features)`
-  - [ ] `score_shakeout(bars, zones, features)`
-  - [ ] `score_markup(bars, zones, features, breakout_state)`
-  - [ ] `score_distribution(bars, zones, features)`
-  - [ ] `score_markdown(bars, zones, features, breakout_state)`
-  - [ ] `scores_to_probabilities(scores)` - Softmax
-  - [ ] `generate_evidence(bars, dominant, features)`
-- [ ] `timeline.py` - State machine
-  - [ ] `TimelineState` dataclass
-  - [ ] `TimelineManager.update(new_report)` → events
-  - [ ] Event emission rules (delta threshold, state change)
-- [ ] `playbook.py` - Playbook generation
-  - [ ] `generate_playbook(report)` → Plan A, Plan B
-  - [ ] Target calculation (next zone or ATR-based)
-  - [ ] Invalidation level calculation
-- [ ] Complete `analyze.py`
-  - [ ] `analyze_market(bars, state, params)` → full `AnalysisReport`
-- [ ] `POST /v1/analyze` endpoint
-  - [ ] Fetch bars (cached)
-  - [ ] Call `analyze_market()`
-  - [ ] Maintain state per ticker+tf
-  - [ ] Return report JSON
-- [ ] Unit tests
-  - [ ] Test behavior scores with constructed bars
-  - [ ] Test probability softmax
-  - [ ] Test timeline event emission
-  - [ ] Test playbook generation
+- [x] `behavior.py` - Behavior inference (2026-01-13)
+  - [x] `score_accumulation(bars, zones, features)`
+  - [x] `score_shakeout(bars, zones, features)`
+  - [x] `score_markup(bars, zones, features, breakout_state)`
+  - [x] `score_distribution(bars, zones, features)`
+  - [x] `score_markdown(bars, zones, features, breakout_state)`
+  - [x] `scores_to_probabilities(scores)` - Softmax
+  - [x] `generate_evidence(bars, dominant, features)`
+- [x] `timeline.py` - State machine
+  - [x] `TimelineState` dataclass
+  - [x] `TimelineManager.update(new_report)` → events
+  - [x] Event emission rules (delta threshold, state change)
+- [x] `playbook.py` - Playbook generation
+  - [x] `generate_playbook(report)` → Plan A, Plan B
+  - [x] Target calculation (next zone or ATR-based)
+  - [x] Invalidation level calculation
+- [x] Complete `analyze.py`
+  - [x] `analyze_market(bars, state, params)` → full `AnalysisReport`
+- [x] `POST /v1/analyze` endpoint
+  - [x] Fetch bars (cached)
+  - [x] Call `analyze_market()`
+  - [x] Return report JSON
+- [x] Unit tests (37 API tests + 42 core tests = 79 total)
+  - [x] Test behavior scores with constructed bars
+  - [x] Test probability softmax
+  - [x] Test timeline event emission
+  - [x] Test playbook generation
 
-### Acceptance
+### Acceptance ✅
 - Shakeout scenario (sweep + reclaim) → high shakeout probability
 - Timeline emits event when dominant behavior changes
 - Playbook contains Plan A and Plan B with valid levels
@@ -198,3 +197,7 @@
 
 - [x] Initial documentation set (2026-01-13)
 - [x] Document optimization and restructure (2026-01-13)
+- [x] Milestone 0: Repo & Infrastructure (2026-01-13)
+- [x] Milestone 1: Market Data (2026-01-13)
+- [x] Milestone 2: Core Structure Engine (2026-01-13)
+- [x] Milestone 3: Behavior + Timeline + Playbook + API Integration (2026-01-13)

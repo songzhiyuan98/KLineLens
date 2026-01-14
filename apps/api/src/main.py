@@ -6,7 +6,7 @@ FastAPI 应用程序入口，提供市场数据和分析接口。
 接口列表:
 - GET /: 健康检查
 - GET /v1/bars: 获取 K 线数据
-- POST /v1/analyze: 运行市场分析（待实现）
+- POST /v1/analyze: 运行市场分析
 
 启动方式:
     uvicorn src.main:app --reload --port 8000
@@ -16,7 +16,11 @@ FastAPI 应用程序入口，提供市场数据和分析接口。
 """
 
 import logging
+import sys
+import os
 from typing import Optional
+from dataclasses import asdict
+from datetime import datetime
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,6 +29,42 @@ from pydantic import BaseModel
 from .config import settings
 from .cache import get_cache, cache_key
 from .providers import YFinanceProvider, TickerNotFoundError, RateLimitError, ProviderError
+
+# 导入 core 模块（使用独立命名空间避免与 API 的 src 冲突）
+import importlib.util
+import importlib.abc
+
+def _import_core_package():
+    """将 packages/core/src 作为 'klinelens_core' 包导入"""
+    core_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'packages', 'core'))
+
+    # 将 core 路径添加到 sys.path
+    if core_path not in sys.path:
+        sys.path.insert(0, core_path)
+
+    # 使用 src 作为包名导入（由于 src 已存在，使用别名技术）
+    # 先保存当前 API 的 src 模块
+    api_src = sys.modules.get('src')
+
+    # 临时移除，允许导入 core 的 src
+    if api_src:
+        del sys.modules['src']
+
+    try:
+        # 导入 core 的 src 模块
+        import src as core_src_module
+        return core_src_module
+    finally:
+        # 恢复 API 的 src 模块
+        if api_src:
+            sys.modules['src'] = api_src
+
+# 导入 core 模块
+_core = _import_core_package()
+analyze_market = _core.analyze_market
+AnalysisParams = _core.AnalysisParams
+CoreBar = _core.Bar
+AnalysisReport = _core.AnalysisReport
 
 # 配置日志
 logging.basicConfig(
@@ -52,6 +92,30 @@ app.add_middleware(
 # 初始化数据提供者和缓存
 provider = YFinanceProvider()
 cache = get_cache(default_ttl=settings.cache_ttl)
+
+
+# ============ 辅助函数 ============
+
+def report_to_dict(report: AnalysisReport) -> dict:
+    """
+    将 AnalysisReport 转换为 JSON 可序列化的字典
+
+    处理 datetime 和嵌套 dataclass 的序列化。
+    """
+    def serialize(obj):
+        """递归序列化对象"""
+        if isinstance(obj, datetime):
+            return obj.isoformat() + "Z"
+        elif hasattr(obj, '__dataclass_fields__'):
+            return {k: serialize(v) for k, v in asdict(obj).items()}
+        elif isinstance(obj, dict):
+            return {k: serialize(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [serialize(item) for item in obj]
+        else:
+            return obj
+
+    return serialize(report)
 
 
 # ============ 数据模型 ============
@@ -194,20 +258,103 @@ async def get_bars(
 @app.post("/v1/analyze")
 async def analyze(request: AnalyzeRequest):
     """
-    市场分析接口（待实现）
+    市场分析接口
 
-    运行完整的市场结构分析，包括:
-    - 趋势/震荡识别
-    - 支撑阻力位
+    运行完整的市场结构分析，返回:
+    - 市场状态（趋势/震荡）
+    - 支撑阻力区域
+    - 突破/假突破信号
     - 行为概率推断
     - 时间线事件
-    - 交易剧本
+    - 条件交易剧本
 
-    将在 Milestone 2-3 中实现。
+    参数:
+        ticker: 股票代码（如 TSLA, AAPL）
+        tf: 时间周期（1m, 5m, 1d）
+        window: 回溯时间（可选）
+
+    返回:
+        完整的 AnalysisReport JSON
+
+    错误:
+        400: 时间周期无效或数据不足
+        404: 股票代码不存在
+        429: 请求频率超限
+        502: 数据提供者错误
     """
-    # 占位实现 - 将在 Milestone 2-3 中完成
-    return {
-        "ticker": request.ticker.upper(),
-        "tf": request.tf,
-        "message": "分析接口尚未实现 - 将在 Milestone 2-3 中完成",
-    }
+    # 验证时间周期
+    if request.tf not in ("1m", "5m", "1d"):
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "TIMEFRAME_INVALID", "message": f"无效的时间周期: {request.tf}"}
+        )
+
+    # 获取默认回溯时间
+    actual_window = request.window or provider.get_default_window(request.tf)
+
+    # 获取 K 线数据（复用 /v1/bars 的逻辑）
+    key = cache_key(request.ticker, request.tf, actual_window)
+    cached_bars = cache.get(key)
+
+    try:
+        if cached_bars is not None:
+            logger.info(f"分析: 缓存命中 {request.ticker}")
+            # 从缓存的字典格式转换为 CoreBar
+            from dateutil.parser import isoparse
+            core_bars = [
+                CoreBar(
+                    t=isoparse(bar["t"].replace("Z", "+00:00")),
+                    o=bar["o"],
+                    h=bar["h"],
+                    l=bar["l"],
+                    c=bar["c"],
+                    v=bar["v"]
+                )
+                for bar in cached_bars
+            ]
+        else:
+            logger.info(f"分析: 获取数据 {request.ticker}")
+            # 从提供者获取数据
+            api_bars = provider.get_bars(request.ticker, request.tf, actual_window)
+
+            # 存入缓存
+            bars_data = [bar.to_dict() for bar in api_bars]
+            cache.set(key, bars_data)
+
+            # 转换为 CoreBar（API Bar 和 Core Bar 结构相同）
+            core_bars = [
+                CoreBar(t=bar.t, o=bar.o, h=bar.h, l=bar.l, c=bar.c, v=bar.v)
+                for bar in api_bars
+            ]
+
+        # 运行市场分析
+        report = analyze_market(
+            bars=core_bars,
+            ticker=request.ticker,
+            timeframe=request.tf
+        )
+
+        # 转换为 JSON 并返回
+        return report_to_dict(report)
+
+    except TickerNotFoundError as e:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "NO_DATA", "message": str(e)}
+        )
+    except RateLimitError as e:
+        raise HTTPException(
+            status_code=429,
+            detail={"code": "PROVIDER_RATE_LIMITED", "message": str(e)}
+        )
+    except ValueError as e:
+        # 数据不足等分析错误
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "ANALYSIS_ERROR", "message": str(e)}
+        )
+    except ProviderError as e:
+        raise HTTPException(
+            status_code=502,
+            detail={"code": "PROVIDER_ERROR", "message": str(e)}
+        )
