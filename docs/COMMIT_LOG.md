@@ -44,7 +44,7 @@ Detailed record of each GitHub commit with context and changes.
 **Changes:**
 | Type | File | Description |
 |------|------|-------------|
-| Add | `Docs/COMMIT_LOG.md` | Detailed history of all commits |
+| Add | `docs/COMMIT_LOG.md` | Detailed history of all commits |
 | Modify | `Claude.md` | Added commit log workflow rules and documentation index entry |
 
 **Result:** Commit log system established for tracking all GitHub updates.
@@ -109,15 +109,15 @@ Detailed record of each GitHub commit with context and changes.
 | Type | File | Description |
 |------|------|-------------|
 | Modify | `MASTER_SPEC.md` | Restructured as concise project constitution |
-| Modify | `Docs/ENGINE_SPEC.md` | Fixed format, added tables and code blocks |
-| Modify | `Docs/API.md` | Added complete schema definitions, error codes |
-| Modify | `Docs/ARCHITECTURE.md` | Added ASCII diagrams, data flow details |
-| Modify | `Docs/I18N.md` | Updated for English-only MVP |
-| Modify | `Docs/TODO.md` | Added sub-tasks and acceptance criteria |
-| Modify | `Docs/CHANGELOG.md` | Recorded documentation changes |
+| Modify | `docs/ENGINE_SPEC.md` | Fixed format, added tables and code blocks |
+| Modify | `docs/API.md` | Added complete schema definitions, error codes |
+| Modify | `docs/ARCHITECTURE.md` | Added ASCII diagrams, data flow details |
+| Modify | `docs/I18N.md` | Updated for English-only MVP |
+| Modify | `docs/TODO.md` | Added sub-tasks and acceptance criteria |
+| Modify | `docs/CHANGELOG.md` | Recorded documentation changes |
 | Modify | `Claude.md` | Updated document index |
-| Add | `Docs/PROVIDER.md` | Data provider integration spec |
-| Add | `Docs/CONFIG.md` | Environment variables spec |
+| Add | `docs/PROVIDER.md` | Data provider integration spec |
+| Add | `docs/CONFIG.md` | Environment variables spec |
 
 **Result:** Documentation system restructured with clear separation of concerns.
 

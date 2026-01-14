@@ -1,81 +1,175 @@
 # KLineLens
 
-KLineLens is a minimalist market-structure terminal for **OHLCV-based** analysis (no login, no noise).  
-Type a ticker → open a detail page → get **structure + behavior probabilities + evidence + timeline + conditional playbook**, updated periodically.
+An open-source local market structure analysis terminal for OHLCV-based trading analysis.
 
-> ⚠️ Disclaimer: Not financial advice. This tool provides rule-based analysis and probability-style interpretations.
+> **Self-hosted**: Run entirely on your local machine via Docker. You control your data.
 
----
-
-## What it does (MVP)
-- **Dashboard**: one big search box → enter ticker → go to detail page
-- **Detail page**:
-  - Candlestick chart (OHLC) + Volume
-  - Support/Resistance **zones**
-  - Breakout / Fakeout markers
-  - Market regime (trend/range) + confidence
-  - Behavior probabilities (Accumulation / Shakeout / Markup / Distribution / Markdown)
-  - Evidence pack (traceable to bar_time + computed metrics)
-  - Stateful timeline (recent structural/behavior changes)
-  - Conditional playbook (Plan A/B with invalidation)
-
-- **Settings**:
-  - Manual language toggle: 中文 / English (site-wide)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Docker](https://img.shields.io/badge/docker-ready-blue.svg)
 
 ---
 
-## Repo layout
-kline-lens/
-apps/
-web/ # Next.js UI (dashboard/detail/settings)
-api/ # FastAPI REST endpoints
-packages/
-core/ # Pure Python engine (structure/behavior/state/report)
-Docs/ # Specs & documentation (source of truth)
-infra/ # Local dev infra (docker-compose, etc.)
-README.md
-CLAUDE.md
+## What It Does
 
-## Documentation (Source of Truth)
-All product/engineering decisions are defined in `Docs/`.
+Type a ticker → Get **structure + behavior probabilities + evidence + timeline + conditional playbook**, updated periodically.
 
-Must-read documents:
-- `Docs/PRD.md` — MVP scope and requirements (what we build / not build)
-- `Docs/UX_SPEC.md` — page layout & UX rules
-- `Docs/API.md` — API contract (frontend-backend “contract”)
-- `Docs/ENGINE_SPEC.md` — algorithm / finance logic spec (structure + behavior + state machine)
-- `Docs/ARCHITECTURE.md` — system architecture & data flow
-- `Docs/PLAN.md` — milestones & dev plan
-- `Docs/I18N.md` — language toggle + key-based text strategy
-- `Docs/DISCLAIMER.md` — risk & compliance statement
-- `Docs/TEST_PLAN.md` — tests & regression plan
+| Feature | Description |
+|---------|-------------|
+| **Market Structure** | Regime detection (trend/range), support/resistance zones |
+| **Behavior Inference** | Probability distribution (accumulation/shakeout/markup/distribution/markdown) |
+| **Evidence Pack** | Traceable metrics for each inference |
+| **Stateful Timeline** | Records structural changes over time |
+| **Conditional Playbook** | Plan A/B with entry, target, invalidation |
 
-> Rule: **If code conflicts with Docs, Docs win** (until Docs are updated).
+> ⚠️ **Disclaimer**: Not financial advice. This tool provides rule-based analysis and probability interpretations. See [docs/DISCLAIMER.md](docs/DISCLAIMER.md).
 
 ---
 
-## Local development (placeholder)
-MVP focus is documentation-first. Local run instructions may evolve as implementation lands.
+## Quick Start (Docker)
 
-Expected (target) stacks:
-- Web: Next.js
-- API: FastAPI
-- Core: Python engine package
-- Optional: Redis/Postgres for caching/snapshots
+### Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (macOS/Windows) or Docker Engine (Linux)
 
-See:
-- `Docs/ARCHITECTURE.md` for runtime diagram
-- `infra/` for docker-compose once available
+### One-Command Setup
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/user/klinelens.git
+cd klinelens
+
+# 2. Copy environment template
+cp .env.example .env
+
+# 3. Start services
+docker compose up --build
+
+# 4. Open your browser
+# Web UI: http://localhost:3000
+# API Docs: http://localhost:8000/docs
+```
+
+Or use Make:
+
+```bash
+cp .env.example .env
+make up
+```
+
+### Stopping Services
+
+```bash
+docker compose down
+# or
+make down
+```
+
+---
+
+## Configuration
+
+Edit `.env` to customize:
+
+```bash
+# Data provider (yahoo is free, no API key needed)
+PROVIDER=yahoo
+
+# Cache TTL (seconds)
+CACHE_TTL=60
+
+# Ports
+API_PORT=8000
+WEB_PORT=3000
+
+# Auto-refresh interval (seconds)
+REFRESH_SECONDS=60
+```
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed configuration options.
+
+---
+
+## Project Structure
+
+```
+klinelens/
+├── apps/
+│   ├── web/                 # Next.js frontend
+│   └── api/                 # FastAPI backend
+├── packages/
+│   └── core/                # Python analysis engine
+├── docs/                    # Documentation
+├── docker-compose.yml       # Docker orchestration
+├── .env.example             # Environment template
+├── Makefile                 # Common commands
+└── README.md
+```
+
+---
+
+## Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [MASTER_SPEC.md](MASTER_SPEC.md) | Project constitution |
+| [docs/PRD.md](docs/PRD.md) | Product requirements |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Docker setup guide |
+| [docs/API.md](docs/API.md) | REST API reference |
+| [docs/ENGINE_SPEC.md](docs/ENGINE_SPEC.md) | Algorithm specification |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture |
+| [docs/PROVIDER.md](docs/PROVIDER.md) | Data provider guide |
+
+---
+
+## Development
+
+### Local Development (without Docker)
+
+```bash
+# Terminal 1: API
+cd apps/api
+pip install -r requirements.txt
+uvicorn src.main:app --reload --port 8000
+
+# Terminal 2: Web
+cd apps/web
+npm install
+npm run dev
+```
+
+### Running Tests
+
+```bash
+# API tests
+cd apps/api && python3 -m pytest tests/ -v
+
+# Or use Make
+make test
+```
+
+---
+
+## Roadmap
+
+- [x] **MVP**: Yahoo Finance provider, in-memory cache, basic UI
+- [ ] **V1**: SQLite persistence, Polygon/TwelveData providers, WebSocket streaming
+- [ ] **V2**: LLM narration layer, multi-timeframe alignment
 
 ---
 
 ## Contributing
-Before implementing any feature, ensure the corresponding doc exists or is updated:
-- new algorithm → add/update doc under `Docs/` (see CLAUDE.md)
-- new architecture change → update `Docs/ARCHITECTURE.md`
-- new deployment method → create `Docs/DEPLOYMENT.md` (or `Docs/DEPLOYMENT_*.md`)
+
+1. Read [CLAUDE.md](CLAUDE.md) for collaboration guidelines
+2. Check [docs/TODO.md](docs/TODO.md) for current tasks
+3. Follow docs-first approach: update docs before implementing
+
+---
+
+## License
+
+[MIT License](LICENSE)
 
 ---
 
 ## Disclaimer
-See `Docs/DISCLAIMER.md`.
+
+This software is for educational and informational purposes only. It does not constitute financial advice. See [docs/DISCLAIMER.md](docs/DISCLAIMER.md) for full disclaimer.

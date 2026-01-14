@@ -16,8 +16,7 @@
     print(settings.cache_ttl)  # 60
 """
 
-from typing import Optional
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -46,10 +45,11 @@ class Settings(BaseSettings):
     log_level: str = "INFO"  # DEBUG, INFO, WARNING, ERROR
     cors_origins: str = "*"  # 允许的跨域来源，* 表示允许所有
 
-    class Config:
-        """Pydantic 配置"""
-        env_file = ".env"  # 从 .env 文件加载
-        env_file_encoding = "utf-8"
+    # Pydantic V2 配置
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8"
+    )
 
 
 # 全局配置实例（单例）

@@ -76,7 +76,7 @@ kline-lens/
 │       ├── tests/
 │       └── pyproject.toml
 │
-├── Docs/                       # Documentation (source of truth)
+├── docs/                       # Documentation (source of truth)
 ├── infra/                      # Docker, deployment configs
 ├── MASTER_SPEC.md
 ├── CLAUDE.md
@@ -345,7 +345,7 @@ npm run dev
 
 ### 9.3 Environment Variables
 
-See `Docs/CONFIG.md` for full list.
+See `docs/CONFIG.md` for full list.
 
 ```bash
 # API
@@ -358,12 +358,77 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 ---
 
-## 10. Deployment (Future)
+## 10. Docker Deployment
 
-MVP is local-only. Deployment docs will be added when needed.
+### 10.1 Docker Compose Topology
 
-Planned approach:
-- API: Docker container on Railway/Render
-- Web: Vercel (Next.js)
-- Database: PostgreSQL (Supabase) for snapshots
-- Cache: Redis (Upstash) for shared state
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Host Machine                            │
+│                                                             │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │              Docker Network (klinelens)               │  │
+│  │                                                       │  │
+│  │  ┌─────────────────┐      ┌─────────────────┐        │  │
+│  │  │   web (Next.js) │      │   api (FastAPI) │        │  │
+│  │  │   Port: 3000    │─────▶│   Port: 8000    │        │  │
+│  │  │                 │ HTTP │                 │        │  │
+│  │  └─────────────────┘      └────────┬────────┘        │  │
+│  │                                    │                  │  │
+│  │                                    │ yfinance         │  │
+│  │                                    ▼                  │  │
+│  │                           ┌─────────────────┐        │  │
+│  │                           │ Yahoo Finance   │        │  │
+│  │                           │ (External API)  │        │  │
+│  │                           └─────────────────┘        │  │
+│  └──────────────────────────────────────────────────────┘  │
+│                                                             │
+│  Browser ◀────────────────────────────────────────────────┘
+│     │
+│     └─▶ http://localhost:3000
+│     └─▶ http://localhost:8000/docs (API Docs)
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 10.2 Container Configuration
+
+| Service | Image Base | Port | Purpose |
+|---------|------------|------|---------|
+| `api` | python:3.11-slim | 8000 | FastAPI backend |
+| `web` | node:20-alpine | 3000 | Next.js frontend |
+
+### 10.3 Environment Variables Flow
+
+```
+.env (Host)
+    │
+    ├──▶ docker-compose.yml
+    │       │
+    │       ├──▶ api container
+    │       │     - PROVIDER
+    │       │     - CACHE_TTL
+    │       │     - LOG_LEVEL
+    │       │     - CORS_ORIGINS
+    │       │
+    │       └──▶ web container
+    │             - NEXT_PUBLIC_API_URL
+    │             - NEXT_PUBLIC_REFRESH_SECONDS
+```
+
+### 10.4 Quick Commands
+
+```bash
+# Start all services
+docker compose up -d
+
+# View logs
+docker compose logs -f
+
+# Stop services
+docker compose down
+
+# Rebuild after code changes
+docker compose up --build
+```
+
+See `docs/DEPLOYMENT.md` for detailed instructions.

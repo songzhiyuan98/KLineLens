@@ -8,9 +8,9 @@ This file tells Claude (and any collaborator) how to work in this repo.
 
 1. **Explain before coding**: Before starting any task, explain what will be done, what files will be created/modified, and what the expected outcome is.
 2. **Ask for requirements first**: If a task requires API keys, external services, deployment setup, or user decisions, ask the user BEFORE writing any code.
-3. **Docs-first**: Implementation must match docs in `Docs/`. Read docs before coding.
+3. **Docs-first**: Implementation must match docs in `docs/`. Read docs before coding.
 4. **Update docs before significant changes**: New algorithm/signal/behavior → update docs first.
-5. **No silent breaking changes**: If schema changes, update `Docs/API.md` and add migration notes.
+5. **No silent breaking changes**: If schema changes, update `docs/API.md` and add migration notes.
 6. **MVP is English-only**: No i18n complexity for MVP. Multi-language is post-MVP.
 7. **Deterministic engine**: `packages/core/` must be pure and testable. Same input → same output.
 
@@ -23,16 +23,16 @@ Before coding, read these in order:
 | Order | Document | Purpose |
 |-------|----------|---------|
 | 1 | `MASTER_SPEC.md` | Project constitution, scope, principles |
-| 2 | `Docs/PRD.md` | Product requirements, user scenarios |
-| 3 | `Docs/UX_SPEC.md` | Page layout, UI rules |
-| 4 | `Docs/API.md` | REST endpoints, request/response schema |
-| 5 | `Docs/ENGINE_SPEC.md` | Algorithm logic, formulas, parameters |
-| 6 | `Docs/ARCHITECTURE.md` | System architecture, data flow |
-| 7 | `Docs/PROVIDER.md` | Data provider integration |
-| 8 | `Docs/CONFIG.md` | Environment variables |
-| 9 | `Docs/PLAN.md` | Development milestones |
-| 10 | `Docs/TODO.md` | Current task tracking |
-| 11 | `Docs/COMMIT_LOG.md` | Detailed commit history |
+| 2 | `docs/PRD.md` | Product requirements, user scenarios |
+| 3 | `docs/UX_SPEC.md` | Page layout, UI rules |
+| 4 | `docs/API.md` | REST endpoints, request/response schema |
+| 5 | `docs/ENGINE_SPEC.md` | Algorithm logic, formulas, parameters |
+| 6 | `docs/ARCHITECTURE.md` | System architecture, data flow |
+| 7 | `docs/PROVIDER.md` | Data provider integration |
+| 8 | `docs/CONFIG.md` | Environment variables |
+| 9 | `docs/PLAN.md` | Development milestones |
+| 10 | `docs/TODO.md` | Current task tracking |
+| 11 | `docs/COMMIT_LOG.md` | Detailed commit history |
 
 If any ambiguity exists, **update the Docs** before implementing.
 
@@ -63,7 +63,7 @@ Example:
 ```
 
 ### Step B: Pick a Milestone
-Use `Docs/PLAN.md` milestones. Implement in order:
+Use `docs/PLAN.md` milestones. Implement in order:
 1. Core engine functions first
 2. Then API endpoints
 3. Then web UI
@@ -74,38 +74,48 @@ Use `Docs/PLAN.md` milestones. Implement in order:
 - Do not mix provider/network logic into core
 
 ### Step D: Follow Schema
-- API must return `AnalysisReport` as documented in `Docs/API.md`
+- API must return `AnalysisReport` as documented in `docs/API.md`
 - All fields required unless marked optional
 
 ### Step E: Update TODO
-- Mark tasks in `Docs/TODO.md` as you work
+- Mark tasks in `docs/TODO.md` as you work
 - Add new tasks if scope changes
+
+### Step F: Test Before Next Milestone (Required)
+**每个 Milestone 完成后，必须先测试再继续下一个 Milestone！**
+
+测试流程：
+1. **启动服务** - 确保服务能正常运行
+2. **手动测试** - 用 curl/浏览器验证核心功能
+3. **自动化测试** - 运行 pytest 确保无回归
+4. **记录问题** - 发现的 bug 记录到 `docs/BUGS.md`
+5. **修复后再继续** - 所有测试通过后才能进入下一个 Milestone
 
 ---
 
 ## 3. Documentation Update Rules
 
 ### 3.1 When Adding Algorithm/Signal
-- Update `Docs/ENGINE_SPEC.md`:
+- Update `docs/ENGINE_SPEC.md`:
   - Feature definitions and formulas
   - Parameters and defaults
   - Evidence rules
 
 ### 3.2 When Changing Architecture
-- Update `Docs/ARCHITECTURE.md`:
+- Update `docs/ARCHITECTURE.md`:
   - Data flow changes
   - New services/components
   - Caching/storage changes
 
 ### 3.3 When Changing API
-- Update `Docs/API.md`:
+- Update `docs/API.md`:
   - Endpoint params
   - Response fields
   - Error codes
 - If breaking: add "Breaking Changes" section
 
 ### 3.4 When Changing UX
-- Update `Docs/UX_SPEC.md`:
+- Update `docs/UX_SPEC.md`:
   - Page layout
   - Card order
   - Error states
@@ -115,21 +125,21 @@ Use `Docs/PLAN.md` milestones. Implement in order:
 ## 4. Task Tracking
 
 ### 4.1 TODO List
-- File: `Docs/TODO.md`
+- File: `docs/TODO.md`
 - Update status as you work
 - Add new tasks when discovered
 
 ### 4.2 Bug Log
-- File: `Docs/BUGS.md`
+- File: `docs/BUGS.md`
 - Format: ID, Date, Symptom, Root cause, Fix, Test added
 
 ### 4.3 Changelog
-- File: `Docs/CHANGELOG.md`
+- File: `docs/CHANGELOG.md`
 - Update for every significant change
 - Follow Keep-a-Changelog format
 
 ### 4.4 Commit Log
-- File: `Docs/COMMIT_LOG.md`
+- File: `docs/COMMIT_LOG.md`
 - Record EVERY git commit with detailed context
 - Format for each commit:
   ```
@@ -202,10 +212,67 @@ export default function TickerDetail() {
 - Component props typed
 - JSDoc comments in Chinese
 
-### 5.4 Testing
-- Core: pytest unit tests
-- API: Integration tests for endpoints
-- Web: Smoke tests for pages
+### 5.4 Testing (Required)
+
+**测试是每个 Milestone 的必须步骤，不可跳过！**
+
+#### 5.4.1 API 测试
+
+启动命令:
+```bash
+cd apps/api
+pip install -r requirements.txt  # 首次运行
+uvicorn src.main:app --reload --port 8000
+```
+
+手动测试检查点:
+```bash
+# 健康检查
+curl http://localhost:8000/
+
+# 获取 K 线数据 - 正常情况
+curl "http://localhost:8000/v1/bars?ticker=TSLA&tf=1m"
+
+# 错误处理 - 无效 ticker
+curl "http://localhost:8000/v1/bars?ticker=INVALIDXYZ&tf=1m"
+
+# 错误处理 - 无效 timeframe
+curl "http://localhost:8000/v1/bars?ticker=TSLA&tf=invalid"
+```
+
+预期结果:
+| 测试 | 预期状态码 | 预期响应 |
+|------|-----------|---------|
+| 健康检查 | 200 | `{"status": "ok", ...}` |
+| 正常获取 | 200 | 包含 bars 数组 |
+| 无效 ticker | 404 | `{"code": "NO_DATA", ...}` |
+| 无效 timeframe | 400 | `{"code": "TIMEFRAME_INVALID", ...}` |
+
+#### 5.4.2 自动化测试
+
+```bash
+# API 测试
+cd apps/api
+pytest tests/ -v
+
+# Core 测试
+cd packages/core
+pytest tests/ -v
+```
+
+#### 5.4.3 测试文件命名规范
+
+- `tests/test_*.py` - 测试文件
+- `test_<module>_<function>.py` - 具体测试
+- 每个公开函数至少一个测试用例
+
+#### 5.4.4 Milestone 验收标准
+
+Milestone 验收前必须满足:
+- [ ] 所有手动测试通过
+- [ ] 所有自动化测试通过
+- [ ] 无 P0/P1 级别 bug
+- [ ] 文档已更新
 
 ---
 
@@ -224,7 +291,7 @@ export default function TickerDetail() {
 ```bash
 # Read docs first
 cat MASTER_SPEC.md
-cat Docs/TODO.md
+cat docs/TODO.md
 
 # Check current milestone
 # Implement tasks in order

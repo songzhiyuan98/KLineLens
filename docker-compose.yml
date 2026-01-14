@@ -1,0 +1,56 @@
+# KLineLens Docker Compose 配置
+#
+# 一键启动本地开发环境：
+#   docker compose up --build
+#
+# 服务说明：
+# - api: FastAPI 后端 (端口 8000)
+# - web: Next.js 前端 (端口 3000)
+
+services:
+  # FastAPI 后端服务
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    ports:
+      - "${API_PORT:-8000}:8000"
+    environment:
+      - PROVIDER=${PROVIDER:-yahoo}
+      - CACHE_TTL=${CACHE_TTL:-60}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:${WEB_PORT:-3000}
+      # 可选：付费 Provider API Keys
+      - POLYGON_API_KEY=${POLYGON_API_KEY:-}
+      - TWELVEDATA_API_KEY=${TWELVEDATA_API_KEY:-}
+    volumes:
+      # 开发模式：挂载源代码实现热重载
+      - ./apps/api/src:/app/src:ro
+      - ./packages/core/src:/app/core:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # Next.js 前端服务
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:${API_PORT:-8000}
+      - NEXT_PUBLIC_REFRESH_SECONDS=${REFRESH_SECONDS:-60}
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+# 网络配置
+networks:
+  default:
+    name: klinelens-network
