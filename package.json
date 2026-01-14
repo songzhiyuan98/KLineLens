@@ -1,0 +1,18 @@
+{
+  "name": "kline-lens",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace=apps/web",
+    "dev:api": "cd apps/api && uvicorn src.main:app --reload --port 8000",
+    "build:web": "npm run build --workspace=apps/web",
+    "lint": "npm run lint --workspace=apps/web"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
