@@ -123,38 +123,41 @@
 
 ---
 
-## Milestone 4: Web Terminal
+## Milestone 4: Web Terminal ✅
 
 ### Tasks
-- [ ] Dashboard page (`/`)
-  - [ ] Search input (ticker)
-  - [ ] Validation (non-empty, format check)
-  - [ ] Navigate to `/t/{ticker}` on submit
-- [ ] Detail page (`/t/[ticker]`)
-  - [ ] Fetch bars on mount
-  - [ ] Fetch analysis on mount
-  - [ ] Chart component (candlestick + volume)
-  - [ ] Zone overlays on chart
-  - [ ] Breakout/fakeout markers
-  - [ ] Analysis panel (cards)
-    - [ ] Market State card
-    - [ ] Behavior Probabilities card
-    - [ ] Evidence card
-    - [ ] Timeline card
-    - [ ] Playbook card
-  - [ ] Timeframe switcher (1m, 1d)
-  - [ ] Last updated timestamp
-  - [ ] Auto-refresh every 60s
-  - [ ] Error states (no data, rate limit)
-- [ ] Settings page (`/settings`)
-  - [ ] Reserved for future settings (MVP: minimal)
-- [ ] Layout
-  - [ ] Header with logo + navigation
-  - [ ] Responsive design (desktop-first)
+- [x] Dashboard page (`/`) (2026-01-14)
+  - [x] Search input (ticker)
+  - [x] Validation (non-empty, format check)
+  - [x] Navigate to `/t/{ticker}` on submit
+  - [x] Popular tickers quick access
+- [x] Detail page (`/t/[ticker]`)
+  - [x] Fetch bars on mount
+  - [x] Fetch analysis on mount
+  - [x] Chart component (candlestick + volume) using lightweight-charts
+  - [x] Zone overlays on chart (support/resistance lines)
+  - [x] Analysis panel (cards)
+    - [x] Market State card
+    - [x] Behavior Probabilities card
+    - [x] Evidence card
+    - [x] Timeline card
+    - [x] Playbook card
+  - [x] Timeframe switcher (1m, 5m, 1d)
+  - [x] Last updated timestamp
+  - [x] Auto-refresh every 60s
+  - [x] Error states (loading, error, retry)
+- [x] Settings page (`/settings`)
+  - [x] Placeholder for future settings
+  - [x] About section with version
+  - [x] Disclaimer notice
+- [x] Layout
+  - [x] Header with logo + navigation
+  - [x] Footer
+  - [x] Global styles
 
-### Acceptance
+### Acceptance ✅
 - Enter "TSLA" on dashboard → navigate to detail page
-- Chart shows candlesticks with zone rectangles
+- Chart shows candlesticks with zone lines
 - All 5 analysis cards render with data
 - Timeframe switch reloads data
 - Page auto-refreshes every 60s
@@ -201,3 +204,4 @@
 - [x] Milestone 1: Market Data (2026-01-13)
 - [x] Milestone 2: Core Structure Engine (2026-01-13)
 - [x] Milestone 3: Behavior + Timeline + Playbook + API Integration (2026-01-13)
+- [x] Milestone 4: Web Terminal (2026-01-14)

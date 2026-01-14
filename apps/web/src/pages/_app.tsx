@@ -6,11 +6,11 @@
  *
  * 功能:
  * - 页面布局包装
- * - 全局状态提供（将来可添加）
- * - 全局样式应用（将来可添加）
+ * - 全局样式应用
  */
 
 import type { AppProps } from 'next/app';
+import '../styles/globals.css';
 
 /**
  * 根应用组件

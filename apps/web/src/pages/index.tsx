@@ -3,92 +3,179 @@
  *
  * KLineLens 的主入口页面。
  * 用户在此输入股票代码（如 TSLA, AAPL）开始分析。
- *
- * 功能:
- * - 显示应用标题和简介
- * - 提供股票代码输入框
- * - 跳转到详情分析页面
  */
 
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/router';
+import { Layout } from '../components';
 
-/**
- * 首页组件
- *
- * 提供简洁的搜索界面，用户输入股票代码后跳转到分析页面。
- *
- * @returns 首页 JSX
- */
 export default function Home() {
-  // 股票代码输入状态
   const [ticker, setTicker] = useState('');
+  const [error, setError] = useState('');
   const router = useRouter();
 
-  /**
-   * 处理表单提交
-   *
-   * 清理用户输入并跳转到分析页面。
-   *
-   * @param e - 表单事件
-   */
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    // 清理输入: 去除空格并转大写
+    setError('');
+
     const sanitized = ticker.trim().toUpperCase();
-    if (sanitized) {
-      router.push(`/t/${sanitized}`);
+
+    // 验证输入
+    if (!sanitized) {
+      setError('Please enter a ticker symbol');
+      return;
     }
+
+    if (!/^[A-Z0-9\-\.]+$/.test(sanitized)) {
+      setError('Invalid ticker format');
+      return;
+    }
+
+    router.push(`/t/${sanitized}`);
   };
 
   return (
-    <main style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '100vh',
-      fontFamily: 'system-ui, sans-serif',
-    }}>
-      {/* 应用标题 */}
-      <h1 style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>KLineLens</h1>
-      {/* 应用简介 */}
-      <p style={{ color: '#666', marginBottom: '2rem' }}>
-        Market structure analysis terminal
-      </p>
+    <Layout>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 'calc(100vh - 120px)',
+        padding: '2rem',
+      }}>
+        {/* 标题 */}
+        <h1 style={{
+          fontSize: '3rem',
+          fontWeight: 700,
+          marginBottom: '0.5rem',
+          background: 'linear-gradient(135deg, #26a69a, #2196f3)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+        }}>
+          KLineLens
+        </h1>
 
-      {/* 搜索表单 */}
-      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '0.5rem' }}>
-        {/* 股票代码输入框 */}
-        <input
-          type="text"
-          value={ticker}
-          onChange={(e) => setTicker(e.target.value)}
-          placeholder="Enter ticker (e.g., TSLA)"
-          style={{
-            padding: '0.75rem 1rem',
-            fontSize: '1rem',
-            border: '1px solid #ccc',
-            borderRadius: '4px',
-            width: '250px',
-          }}
-        />
-        {/* 分析按钮 */}
-        <button
-          type="submit"
-          style={{
-            padding: '0.75rem 1.5rem',
-            fontSize: '1rem',
-            backgroundColor: '#000',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
-        >
-          Analyze
-        </button>
-      </form>
-    </main>
+        {/* 副标题 */}
+        <p style={{
+          color: '#666',
+          fontSize: '1.1rem',
+          marginBottom: '2.5rem',
+        }}>
+          Market Structure Analysis Terminal
+        </p>
+
+        {/* 搜索表单 */}
+        <form onSubmit={handleSubmit} style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '1rem',
+          width: '100%',
+          maxWidth: '400px',
+        }}>
+          <div style={{
+            display: 'flex',
+            gap: '0.5rem',
+            width: '100%',
+          }}>
+            <input
+              type="text"
+              value={ticker}
+              onChange={(e) => setTicker(e.target.value)}
+              placeholder="Enter ticker (e.g., TSLA)"
+              style={{
+                flex: 1,
+                padding: '0.875rem 1rem',
+                fontSize: '1rem',
+                border: '2px solid #eaeaea',
+                borderRadius: '8px',
+                outline: 'none',
+                transition: 'border-color 0.2s',
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#26a69a'}
+              onBlur={(e) => e.target.style.borderColor = '#eaeaea'}
+            />
+            <button
+              type="submit"
+              style={{
+                padding: '0.875rem 1.5rem',
+                fontSize: '1rem',
+                fontWeight: 600,
+                backgroundColor: '#26a69a',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s',
+              }}
+              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#2bbbad'}
+              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#26a69a'}
+            >
+              Analyze
+            </button>
+          </div>
+
+          {/* 错误提示 */}
+          {error && (
+            <div style={{
+              color: '#ef5350',
+              fontSize: '0.875rem',
+            }}>
+              {error}
+            </div>
+          )}
+        </form>
+
+        {/* 快速访问 */}
+        <div style={{
+          marginTop: '3rem',
+          textAlign: 'center',
+        }}>
+          <p style={{
+            color: '#999',
+            fontSize: '0.875rem',
+            marginBottom: '0.75rem',
+          }}>
+            Popular tickers
+          </p>
+          <div style={{
+            display: 'flex',
+            gap: '0.5rem',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+          }}>
+            {['TSLA', 'AAPL', 'NVDA', 'SPY', 'QQQ'].map((t) => (
+              <button
+                key={t}
+                onClick={() => router.push(`/t/${t}`)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  fontSize: '0.875rem',
+                  backgroundColor: '#fff',
+                  color: '#666',
+                  border: '1px solid #eaeaea',
+                  borderRadius: '20px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f8f9fa';
+                  e.currentTarget.style.borderColor = '#26a69a';
+                  e.currentTarget.style.color = '#26a69a';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor = '#fff';
+                  e.currentTarget.style.borderColor = '#eaeaea';
+                  e.currentTarget.style.color = '#666';
+                }}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Layout>
   );
 }

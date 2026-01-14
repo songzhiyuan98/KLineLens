@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- N/A (preparing for 0.2.0 release)
+- N/A (preparing for 0.4.0 release)
 
 ### Changed
 - N/A
@@ -15,6 +15,27 @@ All notable changes to this project will be documented in this file.
 
 ### Removed
 - N/A
+
+---
+
+## [0.3.0] - 2026-01-14
+
+### Added
+- **Web Terminal** (`apps/web/`):
+  - Dashboard page with ticker search and popular tickers
+  - Detail page (`/t/[ticker]`) with full analysis display
+  - CandlestickChart component using TradingView's lightweight-charts
+  - Zone overlays (support/resistance price lines)
+  - 5 analysis cards: MarketState, Behavior, Evidence, Timeline, Playbook
+  - Timeframe switcher (1m, 5m, 1d)
+  - Auto-refresh every 60s with SWR
+  - Loading and error states
+  - Settings page placeholder
+  - Layout component with header/footer
+  - Global styles
+
+### Changed
+- `apps/web/package.json` - Added lightweight-charts, swr dependencies
 
 ---
 
