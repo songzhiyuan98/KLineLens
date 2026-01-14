@@ -4,6 +4,35 @@ Detailed record of each GitHub commit with context and changes.
 
 ---
 
+## [b241ef8] - 2026-01-14
+
+**Message:** `fix(docker): resolve web container build issues`
+
+**Milestone:** N/A - Bug Fix
+
+**Changes:**
+| Type | File | Description |
+|------|------|-------------|
+| Modify | `apps/web/Dockerfile` | Changed npm ci to npm install for monorepo compatibility |
+| Add | `apps/web/public/.gitkeep` | Public directory required by Next.js standalone output |
+| Add | `package-lock.json` | Generated for reproducible builds |
+
+**Test Results:**
+| Test Suite | Result |
+|------------|--------|
+| Docker build | ✅ Both images built successfully |
+| Docker startup | ✅ Both containers running and healthy |
+| API health endpoint | ✅ Returns provider status |
+| API /v1/bars (1d) | ✅ Returns OHLCV data for AAPL |
+| API /v1/bars (1m) | ✅ Returns 389 bars for TSLA |
+| Invalid ticker | ✅ Returns proper error response |
+| Web frontend | ✅ Returns HTML with dashboard |
+| pytest (29 tests) | ✅ All passed in 6.73s |
+
+**Result:** Docker deployment fully functional. All tests pass.
+
+---
+
 ## [158f198] - 2026-01-13
 
 **Message:** `refactor: migrate to open-source local Docker tool`
