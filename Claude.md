@@ -1,157 +1,148 @@
 # CLAUDE.md — KLineLens Collaboration Guide
 
-This file tells Claude (and any collaborator) how to work in this repo:
-- where the source-of-truth Docs are
-- how to implement changes safely
-- how to update documentation, TODOs, and bug records
-
-## 0) Ground rules (must follow)
-1) **Docs-first**: Implementation must match docs in `Docs/`.  
-2) Any significant change requires a doc update:
-   - new algorithm / new signal / new behavior logic → `Docs/ENGINE_SPEC.md` (or a new engine doc)
-   - new API/fields → `Docs/API.md`
-   - new UX/component behavior → `Docs/UX_SPEC.md`
-   - new architecture/data flow/caching/storage → `Docs/ARCHITECTURE.md`
-   - new deployment steps → `Docs/DEPLOYMENT.md` (new file)
-3) **No silent breaking changes**: if a field changes shape, update Docs and add migration notes.
-4) **Key-based text only** (for narrative/evidence/playbook): backend should output `*_key` and numeric values; frontend maps keys to `zh/en`.
+This file tells Claude (and any collaborator) how to work in this repo.
 
 ---
 
-## 1) Where to start (read order)
-Before coding, read:
-1. `Docs/PRD.md` (scope and MVP requirements)
-2. `Docs/UX_SPEC.md` (page layout & required panels)
-3. `Docs/API.md` (frontend-backend contract)
-4. `Docs/ENGINE_SPEC.md` (algorithm + finance logic)
-5. `Docs/ARCHITECTURE.md` (services + data flow)
-6. `Docs/I18N.md` (language toggle + text keys)
-7. `Docs/PLAN.md` (milestones)
+## 0. Ground Rules (Must Follow)
+
+1. **Docs-first**: Implementation must match docs in `Docs/`. Read docs before coding.
+2. **Update docs before significant changes**: New algorithm/signal/behavior → update docs first.
+3. **No silent breaking changes**: If schema changes, update `Docs/API.md` and add migration notes.
+4. **MVP is English-only**: No i18n complexity for MVP. Multi-language is post-MVP.
+5. **Deterministic engine**: `packages/core/` must be pure and testable. Same input → same output.
+
+---
+
+## 1. Documentation Index (Read Order)
+
+Before coding, read these in order:
+
+| Order | Document | Purpose |
+|-------|----------|---------|
+| 1 | `MASTER_SPEC.md` | Project constitution, scope, principles |
+| 2 | `Docs/PRD.md` | Product requirements, user scenarios |
+| 3 | `Docs/UX_SPEC.md` | Page layout, UI rules |
+| 4 | `Docs/API.md` | REST endpoints, request/response schema |
+| 5 | `Docs/ENGINE_SPEC.md` | Algorithm logic, formulas, parameters |
+| 6 | `Docs/ARCHITECTURE.md` | System architecture, data flow |
+| 7 | `Docs/PROVIDER.md` | Data provider integration |
+| 8 | `Docs/CONFIG.md` | Environment variables |
+| 9 | `Docs/PLAN.md` | Development milestones |
+| 10 | `Docs/TODO.md` | Current task tracking |
 
 If any ambiguity exists, **update the Docs** before implementing.
 
 ---
 
-## 2) How to implement (recommended workflow)
-### Step A — pick a milestone
-Use `Docs/PLAN.md` milestones. Implement in small increments:
-- core engine functions first
-- then API endpoints
-- then web UI integration
+## 2. Development Workflow
 
-### Step B — keep the engine deterministic
-- `packages/core/` should remain pure, testable, and deterministic:
-  - same input bars -> same output report
-- do not mix provider/network logic into core
+### Step A: Pick a Milestone
+Use `Docs/PLAN.md` milestones. Implement in order:
+1. Core engine functions first
+2. Then API endpoints
+3. Then web UI
 
-### Step C — maintain schema discipline
-- The API must return the `AnalysisReport` shape as documented
-- Backend should output:
-  - regime, zones, signals, behavior probs, evidence packs, timeline events, playbook
-- Narrative strings should be key-based (`reason_key`, `note_key`, `risk_key`, etc.)
+### Step B: Keep Engine Deterministic
+- `packages/core/` should be pure Python, no I/O
+- Same input bars → same output report
+- Do not mix provider/network logic into core
+
+### Step C: Follow Schema
+- API must return `AnalysisReport` as documented in `Docs/API.md`
+- All fields required unless marked optional
+
+### Step D: Update TODO
+- Mark tasks in `Docs/TODO.md` as you work
+- Add new tasks if scope changes
 
 ---
 
-## 3) Documentation update rules
-### 3.1 When adding a new algorithm/signal/heuristic
+## 3. Documentation Update Rules
+
+### 3.1 When Adding Algorithm/Signal
 - Update `Docs/ENGINE_SPEC.md`:
-  - definitions and finance rationale
-  - features used (formulas)
-  - parameters and default values
-  - evidence rules (what gets shown and why)
-- If it’s large, create a dedicated doc:
-  - `Docs/ENGINE_SIGNAL_<NAME>.md` or `Docs/ENGINE_BEHAVIOR_<NAME>.md`
-- Link the new doc from `Docs/ENGINE_SPEC.md`.
+  - Feature definitions and formulas
+  - Parameters and defaults
+  - Evidence rules
 
-### 3.2 When changing architecture (storage, caching, workers, websockets)
+### 3.2 When Changing Architecture
 - Update `Docs/ARCHITECTURE.md`:
-  - what changed and why
-  - data flow diagram (textual is fine)
-  - operational concerns (rate limits, retries, caching TTL)
-- If deployment changes, create/update:
-  - `Docs/DEPLOYMENT.md` (mandatory for any deploy steps)
+  - Data flow changes
+  - New services/components
+  - Caching/storage changes
 
-### 3.3 When changing APIs
+### 3.3 When Changing API
 - Update `Docs/API.md`:
-  - endpoint params
-  - response fields and examples
-  - errors and codes
-- If breaking: add a “Breaking Changes” section.
+  - Endpoint params
+  - Response fields
+  - Error codes
+- If breaking: add "Breaking Changes" section
 
-### 3.4 When changing UX
+### 3.4 When Changing UX
 - Update `Docs/UX_SPEC.md`:
-  - page layout
-  - panels/cards order
-  - error states
+  - Page layout
+  - Card order
+  - Error states
 
 ---
 
-## 4) TODO, Bug fixes, and Change log
-We keep lightweight but disciplined records in Docs.
+## 4. Task Tracking
 
-### 4.1 TODO list
+### 4.1 TODO List
 - File: `Docs/TODO.md`
-- Format:
-  - [ ] item
-  - [x] done item (with date)
+- Update status as you work
+- Add new tasks when discovered
 
-Rules:
-- Every milestone should have a TODO section
-- Keep TODO updated when work starts/finishes
-
-### 4.2 Bug log
+### 4.2 Bug Log
 - File: `Docs/BUGS.md`
-- Each bug entry must include:
-  - ID (incremental)
-  - Date
-  - Symptom
-  - Root cause
-  - Fix summary
-  - Test added (yes/no) and where
+- Format: ID, Date, Symptom, Root cause, Fix, Test added
 
-### 4.3 Changelog / release notes
+### 4.3 Changelog
 - File: `Docs/CHANGELOG.md`
-- Follow Keep-a-Changelog style:
-  - Added / Changed / Fixed / Removed
-- Every PR/major commit should update CHANGELOG.
+- Update for every significant change
+- Follow Keep-a-Changelog format
 
 ---
 
-## 5) Required additional Docs (create when needed)
-- `Docs/DEPLOYMENT.md` — required once deployment exists
-- `Docs/PROVIDER.md` — when adding data providers (rate limits, auth, symbols)
-- `Docs/CONFIG.md` — environment variables and config strategy
-- `Docs/SECURITY.md` — if any auth/key handling grows complex
-- `Docs/PERFORMANCE.md` — if latency/caching becomes a major theme
+## 5. Code Quality Rules
+
+### 5.1 Python (Core + API)
+- Type hints required
+- Docstrings for public functions
+- Unit tests for core logic
+
+### 5.2 TypeScript (Web)
+- TypeScript strict mode
+- Types for API responses
+- Component props typed
+
+### 5.3 Testing
+- Core: pytest unit tests
+- API: Integration tests for endpoints
+- Web: Smoke tests for pages
 
 ---
 
-## 6) Minimal doc templates (copy/paste)
-### 6.1 Template: Docs/TODO.md
-- Milestone 0: Repo/Infra
-- Milestone 1: Market Data
-- Milestone 2: Structure Engine
-- Milestone 3: Behavior+Timeline+Playbook
-- Milestone 4: Web Terminal + Settings
+## 6. What NOT to Do
 
-### 6.2 Template: Docs/BUGS.md
-- #001 (YYYY-MM-DD): <title>
-  - Symptom:
-  - Root cause:
-  - Fix:
-  - Test:
-
-### 6.3 Template: Docs/DEPLOYMENT.md
-- Local run
-- Environment variables
-- Provider keys setup
-- Build steps
-- Deploy steps
-- Rollback steps
+- Do not invent providers or claim "live data" works without implementation
+- Do not add features outside MVP scope without updating PRD
+- Do not output final trading advice; keep playbooks conditional
+- Do not commit secrets or API keys
+- Do not skip docs updates for significant changes
 
 ---
 
-## 7) What Claude should NOT do
-- Do not invent providers, keys, or claim “live data” works without implementation.
-- Do not add features outside MVP scope without PRD updates.
-- Do not output final user-facing trading advice; keep playbooks conditional and evidence-based.
+## 7. Quick Start
+
+```bash
+# Read docs first
+cat MASTER_SPEC.md
+cat Docs/TODO.md
+
+# Check current milestone
+# Implement tasks in order
+# Update TODO as you go
+# Update docs if schema changes
+```

@@ -1,39 +1,369 @@
-# KLineLens MVP - Architecture
+# KLineLens — Architecture
 
-## 1) 总览
-MVP采用 Monorepo + 三层结构：
-- Web（Next.js）：页面渲染、图表、语言设置
-- API（FastAPI）：数据获取与分析接口
-- Core Engine（Python package）：结构/行为/叙事核心算法（可单测）
+> System architecture, data flow, and technical decisions.
 
-## 2) 目录结构建议
+---
+
+## 1. Overview
+
+MVP uses a **Monorepo + 3-Layer** architecture:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        Frontend (Web)                        │
+│                         Next.js                              │
+│  ┌─────────┐  ┌──────────┐  ┌─────────┐  ┌───────────────┐  │
+│  │Dashboard│  │  Detail  │  │ Settings│  │ Chart + Panel │  │
+│  └─────────┘  └──────────┘  └─────────┘  └───────────────┘  │
+└─────────────────────────────┬───────────────────────────────┘
+                              │ HTTP REST
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                         Backend (API)                        │
+│                          FastAPI                             │
+│  ┌─────────┐  ┌──────────┐  ┌─────────┐  ┌───────────────┐  │
+│  │  /bars  │  │ /analyze │  │  Cache  │  │    Provider   │  │
+│  └─────────┘  └──────────┘  └─────────┘  └───────────────┘  │
+└─────────────────────────────┬───────────────────────────────┘
+                              │ Function call
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                       Core Engine (Lib)                      │
+│                    Python Package (Pure)                     │
+│  ┌─────────┐  ┌──────────┐  ┌─────────┐  ┌───────────────┐  │
+│  │Features │  │Structure │  │Behavior │  │Timeline+Playb │  │
+│  └─────────┘  └──────────┘  └─────────┘  └───────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 2. Directory Structure
+
+```
 kline-lens/
-  apps/
-    web/
-    api/
-  packages/
-    core/
-  Docs/
-  infra/
+├── apps/
+│   ├── web/                    # Next.js frontend
+│   │   ├── src/
+│   │   │   ├── pages/          # Route pages
+│   │   │   ├── components/     # UI components
+│   │   │   ├── hooks/          # React hooks
+│   │   │   ├── lib/            # API client, utils
+│   │   │   └── styles/         # CSS/Tailwind
+│   │   ├── package.json
+│   │   └── next.config.js
+│   │
+│   └── api/                    # FastAPI backend
+│       ├── src/
+│       │   ├── main.py         # FastAPI app
+│       │   ├── routes/         # API routes
+│       │   ├── providers/      # Data provider adapters
+│       │   ├── cache.py        # Caching layer
+│       │   └── config.py       # Configuration
+│       ├── requirements.txt
+│       └── pyproject.toml
+│
+├── packages/
+│   └── core/                   # Pure Python engine
+│       ├── src/
+│       │   ├── __init__.py
+│       │   ├── features.py     # Feature calculations
+│       │   ├── structure.py    # Swing, zones, regime
+│       │   ├── behavior.py     # Behavior inference
+│       │   ├── timeline.py     # State machine
+│       │   ├── playbook.py     # Playbook generation
+│       │   └── analyze.py      # Main analysis entry
+│       ├── tests/
+│       └── pyproject.toml
+│
+├── Docs/                       # Documentation (source of truth)
+├── infra/                      # Docker, deployment configs
+├── MASTER_SPEC.md
+├── CLAUDE.md
+└── README.md
+```
 
-## 3) 数据流
-1. Web 请求 bars：`GET /v1/bars`
-2. Web 请求分析：`POST /v1/analyze`
-3. API：
-   - 调用 MarketDataProvider 拉取 OHLCV（可缓存）
-   - 调用 core.analyze_market(bars, params)
-   - 返回 AnalysisReport JSON
-4. Web 渲染：
-   - 图表：bars + overlays（zones/markers）
-   - 面板：report（state/behavior/timeline/playbook）
+---
 
-## 4) 缓存策略（MVP最小）
-- 内存缓存：ticker+tf+window -> bars（TTL 30~60s）
-- （可选）Redis：多实例部署时共享缓存
-- timeline state：MVP可先内存；后续迁移 Redis
+## 3. Data Flow
 
-## 5) 可扩展点（为V1/V2留口）
-- 多数据源 provider：provider abstraction
-- worker 预计算：定时刷新 bars、预生成 report
-- snapshots/replay：存 Postgres 形成复盘功能
-- LLM narration：在 report JSON 之上生成自然语言，不影响算法 determinism
+### 3.1 Request Flow (Detail Page Load)
+
+```
+User enters ticker
+       │
+       ▼
+┌──────────────┐
+│   Web: /t/   │
+│   {ticker}   │
+└──────┬───────┘
+       │ 1. GET /v1/bars?ticker=X&tf=1m
+       ▼
+┌──────────────┐     ┌─────────────┐
+│   API:       │────▶│   Cache     │ Check cache
+│   /v1/bars   │     │  (TTL 60s)  │
+└──────┬───────┘     └─────────────┘
+       │                   │
+       │ Cache miss        │ Cache hit
+       ▼                   │
+┌──────────────┐           │
+│   Provider   │           │
+│   (yfinance) │           │
+└──────┬───────┘           │
+       │                   │
+       └───────────────────┘
+       │
+       ▼ Return bars
+┌──────────────┐
+│   Web:       │
+│   render     │
+│   chart      │
+└──────┬───────┘
+       │ 2. POST /v1/analyze
+       ▼
+┌──────────────┐
+│   API:       │
+│   /v1/analyze│
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│   Core:      │
+│   analyze()  │
+└──────┬───────┘
+       │
+       ▼ Return AnalysisReport
+┌──────────────┐
+│   Web:       │
+│   render     │
+│   panel      │
+└──────────────┘
+```
+
+### 3.2 Auto-Refresh Flow (Every 60s)
+
+```
+setInterval(60000)
+       │
+       ▼
+┌──────────────┐
+│ POST /analyze│ (bars may be cached)
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│ Core.analyze │
+│  with state  │─────▶ Timeline updated if change detected
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│ Web: update  │
+│ panel cards  │
+└──────────────┘
+```
+
+---
+
+## 4. Layer Responsibilities
+
+### 4.1 Web (Next.js)
+
+| Responsibility | Description |
+|----------------|-------------|
+| Routing | `/`, `/t/{ticker}`, `/settings` |
+| Chart rendering | OHLCV candles + volume + zone overlays |
+| Panel rendering | Cards for state, behavior, timeline, playbook |
+| API client | Fetch bars and analysis from backend |
+| Refresh loop | Auto-fetch every 60s |
+
+**Key Libraries:**
+- Chart: `lightweight-charts` (TradingView) or `recharts`
+- HTTP: `fetch` or `swr`
+- State: React useState/useReducer (no Redux for MVP)
+
+### 4.2 API (FastAPI)
+
+| Responsibility | Description |
+|----------------|-------------|
+| REST endpoints | `/v1/bars`, `/v1/analyze` |
+| Data provider | Adapter pattern for different sources |
+| Caching | In-memory TTL cache for bars |
+| State storage | In-memory dict for timeline state (MVP) |
+| Error handling | Structured error responses |
+
+**Key Design:**
+- Provider abstraction: `MarketDataProvider` interface
+- Single instance for MVP (no horizontal scaling yet)
+
+### 4.3 Core (Python Package)
+
+| Responsibility | Description |
+|----------------|-------------|
+| Feature calculation | ATR, volume_ratio, wick ratios, efficiency |
+| Structure detection | Swing points, zones, regime, breakout FSM |
+| Behavior inference | 5-class probabilities + evidence |
+| Timeline state | Compare with previous state, emit events |
+| Playbook generation | Template-based conditional plans |
+
+**Key Principles:**
+- **Pure functions**: No I/O, no network calls
+- **Deterministic**: Same input bars → same output
+- **Testable**: Unit tests for each module
+
+---
+
+## 5. Caching Strategy
+
+### 5.1 MVP: In-Memory Cache
+
+```python
+# Simple TTL cache
+cache = {}
+
+def get_bars(ticker, tf, window):
+    key = f"{ticker}:{tf}:{window}"
+    if key in cache and not expired(cache[key]):
+        return cache[key].data
+
+    data = provider.fetch(ticker, tf, window)
+    cache[key] = CacheEntry(data, ttl=60)
+    return data
+```
+
+| Cache | TTL | Scope |
+|-------|-----|-------|
+| Bars | 60s | Per ticker+tf+window |
+| Timeline state | Permanent (in-memory) | Per ticker+tf |
+
+### 5.2 Future: Redis Cache
+
+For multi-instance deployment:
+- Bars cache: Redis with TTL
+- Timeline state: Redis hash per ticker+tf
+- Session affinity not required
+
+---
+
+## 6. State Management
+
+### 6.1 Timeline State (Per Ticker+TF)
+
+```python
+TimelineState = {
+    "ticker": "TSLA",
+    "tf": "1m",
+    "last_regime": "range",
+    "last_behavior_probs": {...},
+    "last_breakout_state": "idle",
+    "last_zones_hash": "abc123",
+    "last_updated": "2026-01-13T18:00:00Z"
+}
+```
+
+**Storage:**
+- MVP: In-memory dict (lost on restart)
+- V1: Redis or PostgreSQL
+
+### 6.2 State Comparison Logic
+
+```python
+def should_emit_event(old_state, new_report):
+    # Emit if dominant behavior changed
+    if old_state.dominant != new_report.behavior.dominant:
+        return True
+
+    # Emit if probability delta > threshold
+    if abs(old_state.probs[dominant] - new_report.probs[dominant]) >= 0.12:
+        return True
+
+    # Emit if breakout state changed
+    if old_state.breakout_state != new_report.breakout_state:
+        return True
+
+    # Emit if regime changed
+    if old_state.regime != new_report.market_state.regime:
+        return True
+
+    return False
+```
+
+---
+
+## 7. Error Handling
+
+### 7.1 Provider Errors
+
+| Error Type | Handling |
+|------------|----------|
+| Rate limited | Return 429, suggest retry after |
+| No data | Return 404 with clear message |
+| Provider down | Return 502, use cached data if available |
+| Invalid ticker | Return 400 with validation error |
+
+### 7.2 Core Engine Errors
+
+| Error Type | Handling |
+|------------|----------|
+| Insufficient bars | Return partial report with warning |
+| Calculation error | Log and return 500 |
+
+---
+
+## 8. Extensibility Points (V1/V2)
+
+| Feature | Approach |
+|---------|----------|
+| Multiple providers | `MarketDataProvider` interface, factory pattern |
+| WebSocket streaming | Add `/ws/ticker` endpoint, push on bar update |
+| Snapshots | Store `AnalysisReport` to PostgreSQL with timestamp |
+| LLM narration | Post-process deterministic JSON, add `narrative` field |
+| Multi-timeframe | Run analyze() for 1m and 1d, merge in API layer |
+
+---
+
+## 9. Development Setup (MVP)
+
+### 9.1 Prerequisites
+- Python 3.11+
+- Node.js 18+
+- (Optional) Docker
+
+### 9.2 Local Run
+
+```bash
+# Terminal 1: API
+cd apps/api
+pip install -r requirements.txt
+uvicorn src.main:app --reload --port 8000
+
+# Terminal 2: Web
+cd apps/web
+npm install
+npm run dev
+```
+
+### 9.3 Environment Variables
+
+See `Docs/CONFIG.md` for full list.
+
+```bash
+# API
+PROVIDER=yfinance
+CACHE_TTL=60
+
+# Web
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+---
+
+## 10. Deployment (Future)
+
+MVP is local-only. Deployment docs will be added when needed.
+
+Planned approach:
+- API: Docker container on Railway/Render
+- Web: Vercel (Next.js)
+- Database: PostgreSQL (Supabase) for snapshots
+- Cache: Redis (Upstash) for shared state
