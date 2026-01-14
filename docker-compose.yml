@@ -26,7 +26,7 @@ services:
     volumes:
       # 开发模式：挂载源代码实现热重载
       - ./apps/api/src:/app/src:ro
-      - ./packages/core/src:/app/core:ro
+      - ./packages/core:/app/packages/core:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/"]
       interval: 30s

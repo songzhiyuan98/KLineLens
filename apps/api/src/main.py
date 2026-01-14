@@ -30,41 +30,56 @@ from .config import settings
 from .cache import get_cache, cache_key
 from .providers import YFinanceProvider, TickerNotFoundError, RateLimitError, ProviderError
 
-# 导入 core 模块（使用独立命名空间避免与 API 的 src 冲突）
-import importlib.util
-import importlib.abc
+# 导入 core 模块
+# 支持两种环境：
+# 1. Docker: core 挂载在 /app/core (作为 src 包)
+# 2. 本地开发: core 在 ../../../packages/core
 
 def _import_core_package():
-    """将 packages/core/src 作为 'klinelens_core' 包导入"""
-    core_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'packages', 'core'))
+    """导入 core 分析模块"""
+    # Docker 环境: /app/packages/core
+    docker_core_path = '/app/packages/core'
+    # 本地环境: packages/core
+    local_core_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'packages', 'core'))
+
+    # 检测运行环境
+    if os.path.exists(docker_core_path):
+        core_path = docker_core_path
+    else:
+        core_path = local_core_path
 
     # 将 core 路径添加到 sys.path
     if core_path not in sys.path:
         sys.path.insert(0, core_path)
 
-    # 使用 src 作为包名导入（由于 src 已存在，使用别名技术）
-    # 先保存当前 API 的 src 模块
+    # 保存并临时移除 API 的 src 模块
     api_src = sys.modules.get('src')
+    api_src_submodules = {k: v for k, v in sys.modules.items() if k.startswith('src.')}
 
-    # 临时移除，允许导入 core 的 src
+    for k in api_src_submodules:
+        del sys.modules[k]
     if api_src:
         del sys.modules['src']
 
     try:
-        # 导入 core 的 src 模块
-        import src as core_src_module
-        return core_src_module
+        # 导入 core 的 src 包
+        from src import analyze as core_analyze
+        from src import models as core_models
     finally:
         # 恢复 API 的 src 模块
         if api_src:
             sys.modules['src'] = api_src
+        sys.modules.update(api_src_submodules)
+
+    return (
+        core_analyze.analyze_market,
+        core_analyze.AnalysisParams,
+        core_models.Bar,
+        core_models.AnalysisReport
+    )
 
 # 导入 core 模块
-_core = _import_core_package()
-analyze_market = _core.analyze_market
-AnalysisParams = _core.AnalysisParams
-CoreBar = _core.Bar
-AnalysisReport = _core.AnalysisReport
+analyze_market, AnalysisParams, CoreBar, AnalysisReport = _import_core_package()
 
 # 配置日志
 logging.basicConfig(
