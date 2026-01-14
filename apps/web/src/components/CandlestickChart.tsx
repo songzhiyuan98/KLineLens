@@ -89,8 +89,10 @@ export default function CandlestickChart({
         down: '#ef5350',
         upAlpha: '#26a69a80',
         downAlpha: '#ef535080',
-        supportZone: '#26a69a40',
-        resistanceZone: '#ef535040',
+        supportZone: 'rgba(38, 166, 154, 0.2)',
+        supportZoneLine: 'rgba(38, 166, 154, 0.4)',
+        resistanceZone: 'rgba(239, 83, 80, 0.2)',
+        resistanceZoneLine: 'rgba(239, 83, 80, 0.4)',
         volumeMa: '#ffa726',
       }
     : {
@@ -102,8 +104,11 @@ export default function CandlestickChart({
         down: '#ef5350',
         upAlpha: '#26a69a60',
         downAlpha: '#ef535060',
-        supportZone: '#26a69a30',
-        resistanceZone: '#ef535030',
+        // More subtle zone colors - less saturated
+        supportZone: 'rgba(38, 166, 154, 0.15)',
+        supportZoneLine: 'rgba(38, 166, 154, 0.35)',
+        resistanceZone: 'rgba(239, 83, 80, 0.15)',
+        resistanceZoneLine: 'rgba(239, 83, 80, 0.35)',
         volumeMa: '#ff9800',
       };
 
@@ -231,45 +236,80 @@ export default function CandlestickChart({
     chartRef.current?.timeScale().fitContent();
   }, [bars, chartReady, volumeMA]);
 
-  // 绘制区域
+  // 绘制区域 - 只显示 Top 3 zones，更subtle的样式
   useEffect(() => {
     if (!chartReady || !candleSeriesRef.current) return;
 
     const series = candleSeriesRef.current;
 
-    // 支撑区域
-    supportZones.forEach((zone) => {
+    // 只取 Top 3 支撑区域（按 strength 排序）
+    const topSupport = [...supportZones]
+      .sort((a, b) => (b.strength || 0) - (a.strength || 0))
+      .slice(0, 3);
+
+    // 只取 Top 3 阻力区域（按 strength 排序）
+    const topResistance = [...resistanceZones]
+      .sort((a, b) => (b.strength || 0) - (a.strength || 0))
+      .slice(0, 3);
+
+    // 支撑区域 - 使用中线 + 更subtle的样式
+    topSupport.forEach((zone, index) => {
+      const midPrice = (zone.low + zone.high) / 2;
+      const opacity = index === 0 ? 1 : 0.6; // 最强的 zone 更明显
+
+      // 区域上下边界 - 更淡
       series.createPriceLine({
         price: zone.low,
         color: colors.supportZone,
-        lineWidth: 2,
+        lineWidth: 1,
         lineStyle: 2,
         axisLabelVisible: false,
       });
       series.createPriceLine({
         price: zone.high,
         color: colors.supportZone,
-        lineWidth: 2,
+        lineWidth: 1,
         lineStyle: 2,
         axisLabelVisible: false,
+      });
+      // 区域中线 - 稍强
+      series.createPriceLine({
+        price: midPrice,
+        color: colors.supportZoneLine,
+        lineWidth: index === 0 ? 2 : 1,
+        lineStyle: 0,
+        axisLabelVisible: index === 0,
+        title: index === 0 ? 'S' : '',
       });
     });
 
-    // 阻力区域
-    resistanceZones.forEach((zone) => {
+    // 阻力区域 - 使用中线 + 更subtle的样式
+    topResistance.forEach((zone, index) => {
+      const midPrice = (zone.low + zone.high) / 2;
+
+      // 区域上下边界 - 更淡
       series.createPriceLine({
         price: zone.low,
         color: colors.resistanceZone,
-        lineWidth: 2,
+        lineWidth: 1,
         lineStyle: 2,
         axisLabelVisible: false,
       });
       series.createPriceLine({
         price: zone.high,
         color: colors.resistanceZone,
-        lineWidth: 2,
+        lineWidth: 1,
         lineStyle: 2,
         axisLabelVisible: false,
+      });
+      // 区域中线 - 稍强
+      series.createPriceLine({
+        price: midPrice,
+        color: colors.resistanceZoneLine,
+        lineWidth: index === 0 ? 2 : 1,
+        lineStyle: 0,
+        axisLabelVisible: index === 0,
+        title: index === 0 ? 'R' : '',
       });
     });
   }, [supportZones, resistanceZones, chartReady, darkMode]);

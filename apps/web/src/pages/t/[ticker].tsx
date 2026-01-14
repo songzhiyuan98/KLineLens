@@ -36,6 +36,11 @@ const styles = {
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     lineHeight: 1.5,
   },
+  // 专业数字字体
+  numericFont: {
+    fontFamily: '"SF Mono", "Roboto Mono", Menlo, monospace',
+    fontVariantNumeric: 'tabular-nums',
+  },
   container: {
     maxWidth: '1400px',
     margin: '0 auto',
@@ -58,6 +63,8 @@ const styles = {
     fontSize: '2.5rem',
     fontWeight: 700,
     color: '#1a1a1a',
+    fontFamily: '"SF Mono", "Roboto Mono", Menlo, monospace',
+    fontVariantNumeric: 'tabular-nums',
   },
   change: {
     fontSize: '1rem',
@@ -272,6 +279,57 @@ const styles = {
     borderRadius: '8px',
     overflow: 'hidden',
   },
+  // Verdict Card - 最终结论卡
+  verdictCard: {
+    backgroundColor: '#fff',
+    border: '1px solid #e0e0e0',
+    borderRadius: '8px',
+    padding: '1rem 1.25rem',
+    marginBottom: '1.5rem',
+  },
+  verdictHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '0.75rem',
+  },
+  verdictBias: {
+    fontSize: '1.125rem',
+    fontWeight: 600,
+  },
+  verdictStatus: {
+    fontSize: '0.75rem',
+    padding: '0.25rem 0.5rem',
+    borderRadius: '4px',
+    fontWeight: 500,
+  },
+  verdictAction: {
+    fontSize: '0.875rem',
+    color: '#666',
+    marginBottom: '0.75rem',
+    padding: '0.5rem 0',
+    borderBottom: '1px solid #f0f0f0',
+  },
+  verdictLevels: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '0.5rem',
+    fontSize: '0.8125rem',
+  },
+  verdictLevel: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  verdictLevelLabel: {
+    color: '#999',
+    fontSize: '0.75rem',
+  },
+  verdictLevelValue: {
+    fontFamily: '"SF Mono", "Roboto Mono", Menlo, monospace',
+    fontVariantNumeric: 'tabular-nums',
+    fontWeight: 500,
+  },
   signalItem: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -288,8 +346,19 @@ const styles = {
   breakoutRow: {
     display: 'flex',
     justifyContent: 'space-between',
+    alignItems: 'center',
     fontSize: '0.875rem',
     marginBottom: '0.5rem',
+    height: '1.75rem',
+  },
+  breakoutLabel: {
+    color: '#666',
+    minWidth: '80px',
+  },
+  breakoutValue: {
+    fontFamily: '"SF Mono", "Roboto Mono", Menlo, monospace',
+    fontVariantNumeric: 'tabular-nums',
+    textAlign: 'right' as const,
   },
   checkMark: {
     color: '#26a69a',
@@ -571,6 +640,62 @@ export default function TickerDetail() {
 
               {/* Right Column */}
               <div>
+                {/* Verdict Card - 最终结论 */}
+                <div style={styles.verdictCard}>
+                  <div style={styles.verdictHeader}>
+                    <span style={{
+                      ...styles.verdictBias,
+                      color: regime === 'uptrend' ? '#26a69a' : regime === 'downtrend' ? '#ef5350' : '#666',
+                    }}>
+                      {regime === 'uptrend' ? (lang === 'zh' ? '偏多' : 'Bullish') :
+                       regime === 'downtrend' ? (lang === 'zh' ? '偏空' : 'Bearish') :
+                       (lang === 'zh' ? '中性' : 'Neutral')}
+                    </span>
+                    <span style={{
+                      ...styles.verdictStatus,
+                      backgroundColor: breakoutState === 'confirmed' ? '#e8f5e9' :
+                                      breakoutState === 'attempt' ? '#fff3e0' :
+                                      breakoutState === 'fakeout' ? '#ffebee' : '#f5f5f5',
+                      color: breakoutState === 'confirmed' ? '#2e7d32' :
+                             breakoutState === 'attempt' ? '#ef6c00' :
+                             breakoutState === 'fakeout' ? '#c62828' : '#666',
+                    }}>
+                      {t(`state_${breakoutState}`)}
+                    </span>
+                  </div>
+                  <div style={styles.verdictAction}>
+                    {breakoutState === 'confirmed' ?
+                      (lang === 'zh' ? '突破已确认，考虑顺势' : 'Breakout confirmed, consider trend follow') :
+                     breakoutState === 'attempt' ?
+                      (lang === 'zh' ? '等待量能确认' : 'Wait for volume confirmation') :
+                     breakoutState === 'fakeout' ?
+                      (lang === 'zh' ? '假突破，谨慎观望' : 'Fakeout detected, stay cautious') :
+                      (lang === 'zh' ? '等待突破信号' : 'Wait for breakout signal')}
+                  </div>
+                  <div style={styles.verdictLevels}>
+                    {analysis.zones.resistance.length > 0 && (
+                      <div style={styles.verdictLevel}>
+                        <span style={styles.verdictLevelLabel}>
+                          {lang === 'zh' ? '阻力' : 'Resistance'}
+                        </span>
+                        <span style={{ ...styles.verdictLevelValue, color: '#ef5350' }}>
+                          ${((analysis.zones.resistance[0].low + analysis.zones.resistance[0].high) / 2).toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                    {analysis.zones.support.length > 0 && (
+                      <div style={styles.verdictLevel}>
+                        <span style={styles.verdictLevelLabel}>
+                          {lang === 'zh' ? '支撑' : 'Support'}
+                        </span>
+                        <span style={{ ...styles.verdictLevelValue, color: '#26a69a' }}>
+                          ${((analysis.zones.support[0].low + analysis.zones.support[0].high) / 2).toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Market State */}
                 <div style={styles.section}>
                   <div style={styles.sectionTitle}>{t('market_state')}</div>
@@ -606,24 +731,33 @@ export default function TickerDetail() {
                     ) : (
                       <>
                         <div style={styles.breakoutRow}>
-                          <span style={{ color: '#666' }}>{t('breakout_state')}</span>
-                          <span style={{ fontWeight: 500 }}>
+                          <span style={styles.breakoutLabel}>{t('breakout_state')}</span>
+                          <span style={{ ...styles.breakoutValue, fontWeight: 500 }}>
                             {t(`state_${breakoutState}`)}
                           </span>
                         </div>
                         <div style={styles.breakoutRow}>
-                          <span style={{ color: '#666' }}>{t('volume_ratio')}</span>
-                          <span>
-                            {volumeRatio.toFixed(2)}x
-                            <span style={{ color: '#999', marginLeft: '0.25rem' }}>
-                              ({volumeRatio >= VOLUME_THRESHOLD ? '≥' : '<'} {VOLUME_THRESHOLD})
+                          <span style={styles.breakoutLabel}>{t('volume_ratio')}</span>
+                          <span style={styles.breakoutValue}>
+                            <span style={{
+                              color: volumeRatio >= VOLUME_THRESHOLD ? '#26a69a' : '#666',
+                              fontWeight: volumeRatio >= VOLUME_THRESHOLD ? 600 : 400,
+                            }}>
+                              {volumeRatio.toFixed(2)}x
+                            </span>
+                            <span style={{ color: '#bbb', marginLeft: '0.375rem', fontSize: '0.75rem' }}>
+                              {volumeRatio >= VOLUME_THRESHOLD ? '✓' : ''}
                             </span>
                           </span>
                         </div>
                         <div style={styles.breakoutRow}>
-                          <span style={{ color: '#666' }}>{t('confirm_closes')}</span>
-                          <span>
-                            {breakoutState === 'confirmed' ? '2/2' : breakoutState === 'attempt' ? '1/2' : '-'}
+                          <span style={styles.breakoutLabel}>{t('confirm_closes')}</span>
+                          <span style={styles.breakoutValue}>
+                            {breakoutState === 'confirmed' ?
+                              <span style={{ color: '#26a69a', fontWeight: 600 }}>2/2 ✓</span> :
+                             breakoutState === 'attempt' ?
+                              <span style={{ color: '#ff9800' }}>1/2</span> :
+                              <span style={{ color: '#999' }}>—</span>}
                           </span>
                         </div>
                       </>
@@ -631,7 +765,7 @@ export default function TickerDetail() {
                   </div>
                 </div>
 
-                {/* Signals */}
+                {/* Signals - 只显示最近 3 条，标准化格式 */}
                 <div style={styles.section}>
                   <div style={styles.sectionTitle}>{t('signals')}</div>
                   <div style={styles.card}>
@@ -639,20 +773,42 @@ export default function TickerDetail() {
                       <div style={styles.empty}>{t('no_signals')}</div>
                     ) : (
                       <div>
-                        {analysis.signals.slice(0, 5).map((signal, i, arr) => {
+                        {analysis.signals.slice(0, 3).map((signal, i, arr) => {
                           const signalKey = `signal.${signal.type}`;
                           const signalText = t(signalKey) !== signalKey ? t(signalKey) : t(signal.type);
                           const isLast = i === arr.length - 1;
+                          const isBullish = signal.direction === 'bullish';
+                          const isConfirmed = signal.type === 'breakout_confirmed';
+                          const isFakeout = signal.type === 'fakeout';
                           return (
                             <div key={i} style={{
                               ...styles.signalItem,
                               ...(isLast ? { borderBottom: 'none' } : {}),
                             }}>
-                              <span style={{ fontSize: '0.875rem', color: '#1a1a1a' }}>
-                                {signalText}
-                              </span>
-                              <span style={{ fontSize: '0.75rem', color: '#999' }}>
-                                ${signal.level.toFixed(2)} · {formatDate(signal.bar_time)}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
+                                <span style={{
+                                  fontSize: '0.8125rem',
+                                  color: isConfirmed ? '#26a69a' : isFakeout ? '#ef5350' : '#1a1a1a',
+                                  fontWeight: isConfirmed ? 500 : 400,
+                                }}>
+                                  {signalText}
+                                  {isConfirmed && ' ✓'}
+                                </span>
+                                <span style={{
+                                  fontSize: '0.6875rem',
+                                  color: '#999',
+                                  fontFamily: '"SF Mono", "Roboto Mono", Menlo, monospace',
+                                }}>
+                                  {formatDate(signal.bar_time)}
+                                </span>
+                              </div>
+                              <span style={{
+                                fontSize: '0.8125rem',
+                                color: isBullish ? '#26a69a' : '#ef5350',
+                                fontFamily: '"SF Mono", "Roboto Mono", Menlo, monospace',
+                                fontVariantNumeric: 'tabular-nums',
+                              }}>
+                                ${signal.level.toFixed(2)}
                               </span>
                             </div>
                           );
@@ -662,7 +818,7 @@ export default function TickerDetail() {
                   </div>
                 </div>
 
-                {/* Evidence */}
+                {/* Evidence - 只显示最近 3 条 */}
                 <div style={styles.section}>
                   <div style={styles.sectionTitle}>{t('evidence')}</div>
                   <div style={styles.card}>
@@ -670,7 +826,7 @@ export default function TickerDetail() {
                       <div style={styles.empty}>{t('no_evidence')}</div>
                     ) : (
                       <div>
-                        {analysis.behavior.evidence.slice(0, 5).map((item: EvidenceItem, i, arr) => {
+                        {analysis.behavior.evidence.slice(0, 3).map((item: EvidenceItem, i, arr) => {
                           const noteKey = item.note;
                           const translated = t(noteKey) !== noteKey ? t(noteKey) : noteKey;
                           const isLast = i === arr.length - 1;
@@ -719,7 +875,7 @@ export default function TickerDetail() {
                   </div>
                 </div>
 
-                {/* Timeline */}
+                {/* Timeline - 只显示最近 3 条 */}
                 <div style={styles.section}>
                   <div style={styles.sectionTitle}>{t('timeline')}</div>
                   <div style={styles.card}>
@@ -727,7 +883,7 @@ export default function TickerDetail() {
                       <div style={styles.empty}>{t('no_events')}</div>
                     ) : (
                       <div>
-                        {analysis.timeline.slice(0, 5).map((event, i) => {
+                        {analysis.timeline.slice(0, 3).map((event, i) => {
                           // 只显示有意义的 reason，跳过原始 key
                           const showReason = event.reason && !event.reason.includes('.');
                           return (
