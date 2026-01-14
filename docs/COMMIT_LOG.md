@@ -4,6 +4,34 @@ Detailed record of each GitHub commit with context and changes.
 
 ---
 
+## [158f198] - 2026-01-13
+
+**Message:** `refactor: migrate to open-source local Docker tool`
+
+**Milestone:** N/A - Major Architecture Change
+
+**Changes:**
+| Type | File | Description |
+|------|------|-------------|
+| Rename | `Docs/` → `docs/` | Lowercase convention for GitHub |
+| Modify | `MASTER_SPEC.md` | Local tool positioning, user responsibilities |
+| Modify | `docs/PRD.md` | Docker deployment, user responsibilities |
+| Modify | `README.md` | Docker quickstart guide |
+| Modify | `docs/ARCHITECTURE.md` | Docker topology diagram |
+| Modify | `docs/PROVIDER.md` | Rate limits, provider switching guide |
+| Add | `docker-compose.yml` | Docker orchestration |
+| Add | `apps/api/Dockerfile` | API container |
+| Add | `apps/web/Dockerfile` | Web container |
+| Add | `docs/DEPLOYMENT.md` | Docker setup and troubleshooting |
+| Add | `.env.example` | Environment configuration template |
+| Add | `LICENSE` | MIT License |
+| Add | `Makefile` | Common commands |
+| Add | `apps/api/tests/` | API test suite (29 tests) |
+
+**Result:** Project repositioned as open-source local Docker tool. Users run on their own machine and manage their own data sources.
+
+---
+
 ## [02ba430] - 2026-01-13
 
 **Message:** `feat(api): implement market data provider with yfinance (Milestone 1)`
