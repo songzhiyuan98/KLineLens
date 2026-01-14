@@ -1,7 +1,7 @@
 
 ---
 
-## docs/ENGINE_SPEC.md（第四份：算法 + 金融逻辑，清楚、专业、分类、细节）
+## Docs/ENGINE_SPEC.md（第四份：算法 + 金融逻辑，清楚、专业、分类、细节）
 
 ```md
 # KLineLens MVP - Engine Spec（结构识别 + 行为推断 + 叙事状态机）

@@ -1,7 +1,7 @@
 # TODO
 
 ## Milestone 0 — Repo & Docs
-- [ ] Add initial docs set (PRD/UX/API/ENGINE/ARCH/PLAN/I18N/DISCLAIMER/TEST)
+- [ ] Add initial Docs set (PRD/UX/API/ENGINE/ARCH/PLAN/I18N/DISCLAIMER/TEST)
 - [ ] Setup repo structure (apps/web, apps/api, packages/core, infra)
 
 ## Milestone 1 — Market Data

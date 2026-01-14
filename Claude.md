@@ -1,40 +1,40 @@
 # CLAUDE.md — KLineLens Collaboration Guide
 
 This file tells Claude (and any collaborator) how to work in this repo:
-- where the source-of-truth docs are
+- where the source-of-truth Docs are
 - how to implement changes safely
 - how to update documentation, TODOs, and bug records
 
 ## 0) Ground rules (must follow)
-1) **Docs-first**: Implementation must match docs in `docs/`.  
+1) **Docs-first**: Implementation must match docs in `Docs/`.  
 2) Any significant change requires a doc update:
-   - new algorithm / new signal / new behavior logic → `docs/ENGINE_SPEC.md` (or a new engine doc)
-   - new API/fields → `docs/API.md`
-   - new UX/component behavior → `docs/UX_SPEC.md`
-   - new architecture/data flow/caching/storage → `docs/ARCHITECTURE.md`
-   - new deployment steps → `docs/DEPLOYMENT.md` (new file)
-3) **No silent breaking changes**: if a field changes shape, update docs and add migration notes.
+   - new algorithm / new signal / new behavior logic → `Docs/ENGINE_SPEC.md` (or a new engine doc)
+   - new API/fields → `Docs/API.md`
+   - new UX/component behavior → `Docs/UX_SPEC.md`
+   - new architecture/data flow/caching/storage → `Docs/ARCHITECTURE.md`
+   - new deployment steps → `Docs/DEPLOYMENT.md` (new file)
+3) **No silent breaking changes**: if a field changes shape, update Docs and add migration notes.
 4) **Key-based text only** (for narrative/evidence/playbook): backend should output `*_key` and numeric values; frontend maps keys to `zh/en`.
 
 ---
 
 ## 1) Where to start (read order)
 Before coding, read:
-1. `docs/PRD.md` (scope and MVP requirements)
-2. `docs/UX_SPEC.md` (page layout & required panels)
-3. `docs/API.md` (frontend-backend contract)
-4. `docs/ENGINE_SPEC.md` (algorithm + finance logic)
-5. `docs/ARCHITECTURE.md` (services + data flow)
-6. `docs/I18N.md` (language toggle + text keys)
-7. `docs/PLAN.md` (milestones)
+1. `Docs/PRD.md` (scope and MVP requirements)
+2. `Docs/UX_SPEC.md` (page layout & required panels)
+3. `Docs/API.md` (frontend-backend contract)
+4. `Docs/ENGINE_SPEC.md` (algorithm + finance logic)
+5. `Docs/ARCHITECTURE.md` (services + data flow)
+6. `Docs/I18N.md` (language toggle + text keys)
+7. `Docs/PLAN.md` (milestones)
 
-If any ambiguity exists, **update the docs** before implementing.
+If any ambiguity exists, **update the Docs** before implementing.
 
 ---
 
 ## 2) How to implement (recommended workflow)
 ### Step A — pick a milestone
-Use `docs/PLAN.md` milestones. Implement in small increments:
+Use `Docs/PLAN.md` milestones. Implement in small increments:
 - core engine functions first
 - then API endpoints
 - then web UI integration
@@ -54,32 +54,32 @@ Use `docs/PLAN.md` milestones. Implement in small increments:
 
 ## 3) Documentation update rules
 ### 3.1 When adding a new algorithm/signal/heuristic
-- Update `docs/ENGINE_SPEC.md`:
+- Update `Docs/ENGINE_SPEC.md`:
   - definitions and finance rationale
   - features used (formulas)
   - parameters and default values
   - evidence rules (what gets shown and why)
 - If it’s large, create a dedicated doc:
-  - `docs/ENGINE_SIGNAL_<NAME>.md` or `docs/ENGINE_BEHAVIOR_<NAME>.md`
-- Link the new doc from `docs/ENGINE_SPEC.md`.
+  - `Docs/ENGINE_SIGNAL_<NAME>.md` or `Docs/ENGINE_BEHAVIOR_<NAME>.md`
+- Link the new doc from `Docs/ENGINE_SPEC.md`.
 
 ### 3.2 When changing architecture (storage, caching, workers, websockets)
-- Update `docs/ARCHITECTURE.md`:
+- Update `Docs/ARCHITECTURE.md`:
   - what changed and why
   - data flow diagram (textual is fine)
   - operational concerns (rate limits, retries, caching TTL)
 - If deployment changes, create/update:
-  - `docs/DEPLOYMENT.md` (mandatory for any deploy steps)
+  - `Docs/DEPLOYMENT.md` (mandatory for any deploy steps)
 
 ### 3.3 When changing APIs
-- Update `docs/API.md`:
+- Update `Docs/API.md`:
   - endpoint params
   - response fields and examples
   - errors and codes
 - If breaking: add a “Breaking Changes” section.
 
 ### 3.4 When changing UX
-- Update `docs/UX_SPEC.md`:
+- Update `Docs/UX_SPEC.md`:
   - page layout
   - panels/cards order
   - error states
@@ -87,10 +87,10 @@ Use `docs/PLAN.md` milestones. Implement in small increments:
 ---
 
 ## 4) TODO, Bug fixes, and Change log
-We keep lightweight but disciplined records in docs.
+We keep lightweight but disciplined records in Docs.
 
 ### 4.1 TODO list
-- File: `docs/TODO.md`
+- File: `Docs/TODO.md`
 - Format:
   - [ ] item
   - [x] done item (with date)
@@ -100,7 +100,7 @@ Rules:
 - Keep TODO updated when work starts/finishes
 
 ### 4.2 Bug log
-- File: `docs/BUGS.md`
+- File: `Docs/BUGS.md`
 - Each bug entry must include:
   - ID (incremental)
   - Date
@@ -110,38 +110,38 @@ Rules:
   - Test added (yes/no) and where
 
 ### 4.3 Changelog / release notes
-- File: `docs/CHANGELOG.md`
+- File: `Docs/CHANGELOG.md`
 - Follow Keep-a-Changelog style:
   - Added / Changed / Fixed / Removed
 - Every PR/major commit should update CHANGELOG.
 
 ---
 
-## 5) Required additional docs (create when needed)
-- `docs/DEPLOYMENT.md` — required once deployment exists
-- `docs/PROVIDER.md` — when adding data providers (rate limits, auth, symbols)
-- `docs/CONFIG.md` — environment variables and config strategy
-- `docs/SECURITY.md` — if any auth/key handling grows complex
-- `docs/PERFORMANCE.md` — if latency/caching becomes a major theme
+## 5) Required additional Docs (create when needed)
+- `Docs/DEPLOYMENT.md` — required once deployment exists
+- `Docs/PROVIDER.md` — when adding data providers (rate limits, auth, symbols)
+- `Docs/CONFIG.md` — environment variables and config strategy
+- `Docs/SECURITY.md` — if any auth/key handling grows complex
+- `Docs/PERFORMANCE.md` — if latency/caching becomes a major theme
 
 ---
 
 ## 6) Minimal doc templates (copy/paste)
-### 6.1 Template: docs/TODO.md
+### 6.1 Template: Docs/TODO.md
 - Milestone 0: Repo/Infra
 - Milestone 1: Market Data
 - Milestone 2: Structure Engine
 - Milestone 3: Behavior+Timeline+Playbook
 - Milestone 4: Web Terminal + Settings
 
-### 6.2 Template: docs/BUGS.md
+### 6.2 Template: Docs/BUGS.md
 - #001 (YYYY-MM-DD): <title>
   - Symptom:
   - Root cause:
   - Fix:
   - Test:
 
-### 6.3 Template: docs/DEPLOYMENT.md
+### 6.3 Template: Docs/DEPLOYMENT.md
 - Local run
 - Environment variables
 - Provider keys setup

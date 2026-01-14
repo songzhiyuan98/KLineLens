@@ -31,26 +31,26 @@ web/ # Next.js UI (dashboard/detail/settings)
 api/ # FastAPI REST endpoints
 packages/
 core/ # Pure Python engine (structure/behavior/state/report)
-docs/ # Specs & documentation (source of truth)
+Docs/ # Specs & documentation (source of truth)
 infra/ # Local dev infra (docker-compose, etc.)
 README.md
 CLAUDE.md
 
 ## Documentation (Source of Truth)
-All product/engineering decisions are defined in `docs/`.
+All product/engineering decisions are defined in `Docs/`.
 
 Must-read documents:
-- `docs/PRD.md` — MVP scope and requirements (what we build / not build)
-- `docs/UX_SPEC.md` — page layout & UX rules
-- `docs/API.md` — API contract (frontend-backend “contract”)
-- `docs/ENGINE_SPEC.md` — algorithm / finance logic spec (structure + behavior + state machine)
-- `docs/ARCHITECTURE.md` — system architecture & data flow
-- `docs/PLAN.md` — milestones & dev plan
-- `docs/I18N.md` — language toggle + key-based text strategy
-- `docs/DISCLAIMER.md` — risk & compliance statement
-- `docs/TEST_PLAN.md` — tests & regression plan
+- `Docs/PRD.md` — MVP scope and requirements (what we build / not build)
+- `Docs/UX_SPEC.md` — page layout & UX rules
+- `Docs/API.md` — API contract (frontend-backend “contract”)
+- `Docs/ENGINE_SPEC.md` — algorithm / finance logic spec (structure + behavior + state machine)
+- `Docs/ARCHITECTURE.md` — system architecture & data flow
+- `Docs/PLAN.md` — milestones & dev plan
+- `Docs/I18N.md` — language toggle + key-based text strategy
+- `Docs/DISCLAIMER.md` — risk & compliance statement
+- `Docs/TEST_PLAN.md` — tests & regression plan
 
-> Rule: **If code conflicts with docs, docs win** (until docs are updated).
+> Rule: **If code conflicts with Docs, Docs win** (until Docs are updated).
 
 ---
 
@@ -64,18 +64,18 @@ Expected (target) stacks:
 - Optional: Redis/Postgres for caching/snapshots
 
 See:
-- `docs/ARCHITECTURE.md` for runtime diagram
+- `Docs/ARCHITECTURE.md` for runtime diagram
 - `infra/` for docker-compose once available
 
 ---
 
 ## Contributing
 Before implementing any feature, ensure the corresponding doc exists or is updated:
-- new algorithm → add/update doc under `docs/` (see CLAUDE.md)
-- new architecture change → update `docs/ARCHITECTURE.md`
-- new deployment method → create `docs/DEPLOYMENT.md` (or `docs/DEPLOYMENT_*.md`)
+- new algorithm → add/update doc under `Docs/` (see CLAUDE.md)
+- new architecture change → update `Docs/ARCHITECTURE.md`
+- new deployment method → create `Docs/DEPLOYMENT.md` (or `Docs/DEPLOYMENT_*.md`)
 
 ---
 
 ## Disclaimer
-See `docs/DISCLAIMER.md`.
+See `Docs/DISCLAIMER.md`.

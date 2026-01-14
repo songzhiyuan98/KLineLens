@@ -171,7 +171,7 @@ B. Analysis Panel（卡片式）
 - timeline[]
 - playbook[]
 
-详见 `docs/API.md` 与 `docs/ENGINE_SPEC.md`。
+详见 `Docs/API.md` 与 `Docs/ENGINE_SPEC.md`。
 
 ---
 
