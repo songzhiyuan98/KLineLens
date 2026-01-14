@@ -1,0 +1,113 @@
+# Commit Log
+
+Detailed record of each GitHub commit with context and changes.
+
+---
+
+## [5e07963] - 2026-01-13
+
+**Message:** `docs: add commit log for tracking GitHub updates`
+
+**Milestone:** N/A - Documentation
+
+**Changes:**
+| Type | File | Description |
+|------|------|-------------|
+| Add | `Docs/COMMIT_LOG.md` | Detailed history of all commits |
+| Modify | `Claude.md` | Added commit log workflow rules and documentation index entry |
+
+**Result:** Commit log system established for tracking all GitHub updates.
+
+---
+
+## [246bcca] - 2026-01-13
+
+**Message:** `feat: initialize monorepo structure (Milestone 0)`
+
+**Milestone:** 0 - Repo & Infrastructure
+
+**Changes:**
+| Type | File | Description |
+|------|------|-------------|
+| Add | `package.json` | Root monorepo config with workspace scripts |
+| Add | `.gitignore` | Ignore patterns for Node, Python, IDE, OS |
+| Add | `apps/web/package.json` | Next.js dependencies |
+| Add | `apps/web/tsconfig.json` | TypeScript config |
+| Add | `apps/web/next.config.js` | Next.js config |
+| Add | `apps/web/src/pages/index.tsx` | Dashboard with search box |
+| Add | `apps/web/src/pages/_app.tsx` | App wrapper |
+| Add | `apps/web/src/pages/t/[ticker].tsx` | Detail page scaffold |
+| Add | `apps/web/.env.example` | Environment template |
+| Add | `apps/api/pyproject.toml` | Python project config |
+| Add | `apps/api/requirements.txt` | Python dependencies |
+| Add | `apps/api/src/__init__.py` | Package init |
+| Add | `apps/api/src/main.py` | FastAPI app with placeholder endpoints |
+| Add | `apps/api/.env.example` | Environment template |
+| Add | `packages/core/pyproject.toml` | Core engine project config |
+| Add | `packages/core/src/__init__.py` | Package init |
+| Add | `packages/core/src/types.py` | Type definitions (Bar, Zone, Signal, etc.) |
+| Add | `packages/core/tests/__init__.py` | Test package init |
+
+**Result:** Monorepo structure ready for development.
+
+---
+
+## [ec426df] - 2026-01-13
+
+**Message:** `docs(claude): add explain-before-coding workflow rule`
+
+**Milestone:** N/A - Documentation
+
+**Changes:**
+| Type | File | Description |
+|------|------|-------------|
+| Modify | `Claude.md` | Added rules 1-2: explain before coding, ask for requirements first |
+| Modify | `Claude.md` | Added Step A workflow with example |
+
+**Result:** Claude now explains each step and asks for prerequisites before coding.
+
+---
+
+## [dd6d8c7] - 2026-01-13
+
+**Message:** `docs: restructure and enhance documentation system`
+
+**Milestone:** N/A - Documentation
+
+**Changes:**
+| Type | File | Description |
+|------|------|-------------|
+| Modify | `MASTER_SPEC.md` | Restructured as concise project constitution |
+| Modify | `Docs/ENGINE_SPEC.md` | Fixed format, added tables and code blocks |
+| Modify | `Docs/API.md` | Added complete schema definitions, error codes |
+| Modify | `Docs/ARCHITECTURE.md` | Added ASCII diagrams, data flow details |
+| Modify | `Docs/I18N.md` | Updated for English-only MVP |
+| Modify | `Docs/TODO.md` | Added sub-tasks and acceptance criteria |
+| Modify | `Docs/CHANGELOG.md` | Recorded documentation changes |
+| Modify | `Claude.md` | Updated document index |
+| Add | `Docs/PROVIDER.md` | Data provider integration spec |
+| Add | `Docs/CONFIG.md` | Environment variables spec |
+
+**Result:** Documentation system restructured with clear separation of concerns.
+
+---
+
+## [7f4a750] - 2026-01-13
+
+**Message:** `DOCS UPDATE`
+
+**Milestone:** N/A - Initial Documentation
+
+**Changes:**
+- Initial documentation set created by ChatGPT
+
+---
+
+## [3b27a05] - 2026-01-13
+
+**Message:** `Initial commit`
+
+**Milestone:** N/A
+
+**Changes:**
+- Repository initialized

@@ -32,6 +32,7 @@ Before coding, read these in order:
 | 8 | `Docs/CONFIG.md` | Environment variables |
 | 9 | `Docs/PLAN.md` | Development milestones |
 | 10 | `Docs/TODO.md` | Current task tracking |
+| 11 | `Docs/COMMIT_LOG.md` | Detailed commit history |
 
 If any ambiguity exists, **update the Docs** before implementing.
 
@@ -126,6 +127,21 @@ Use `Docs/PLAN.md` milestones. Implement in order:
 - File: `Docs/CHANGELOG.md`
 - Update for every significant change
 - Follow Keep-a-Changelog format
+
+### 4.4 Commit Log
+- File: `Docs/COMMIT_LOG.md`
+- Record EVERY git commit with detailed context
+- Format for each commit:
+  ```
+  ## [commit_hash] - YYYY-MM-DD
+  **Message:** `commit message`
+  **Milestone:** X - Name
+  **Changes:**
+  | Type | File | Description |
+  | Add/Modify/Delete | path | what changed |
+  **Result:** Summary of outcome
+  ```
+- Update IMMEDIATELY after each `git push`
 
 ---
 
