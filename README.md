@@ -44,17 +44,28 @@ Backtested on 6 months of daily data across 19 major tickers (MSFT, GOOGL, AMZN,
 
 | Metric | Result |
 |--------|--------|
-| **Breakout Accuracy** | 98.9% |
-| **Fakeout Detection Rate** | 88.9% |
+| **Breakout Accuracy** | 98.9% (±4.6%) |
+| **Fakeout Detection Rate** | 88.9% (±31.4%) |
 | **Signal Hit Rate** | 73.8% |
 | **Total Trading Days** | 2,432 |
+
+### Per-Ticker Highlights
+
+| Ticker | Breakout Acc | Fakeout Det | Signal Hit |
+|--------|-------------|-------------|------------|
+| MSFT | 100% | 100% | 50% |
+| GOOGL | 100% | - | 100% |
+| META | 100% | 100% | 64% |
+| TSLA | 100% | - | 100% |
+| SPY | 100% | - | 67% |
+| QQQ | 100% | - | 100% |
 
 Run your own evaluation:
 ```bash
 python scripts/run_backtest.py
 ```
 
-See [docs/BACKTEST_RESULTS.json](docs/BACKTEST_RESULTS.json) for detailed per-ticker results.
+See [docs/EVALUATION.md](docs/EVALUATION.md) for full methodology and per-ticker results.
 
 ---
 
@@ -156,6 +167,7 @@ KLineLens/
 
 | Document | Purpose |
 |----------|---------|
+| [docs/EVALUATION.md](docs/EVALUATION.md) | Backtest evaluation report |
 | [docs/PRD.md](docs/PRD.md) | Product requirements |
 | [docs/UX_SPEC.md](docs/UX_SPEC.md) | UI specification |
 | [docs/API.md](docs/API.md) | REST API reference |
