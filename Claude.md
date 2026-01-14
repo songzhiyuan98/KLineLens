@@ -6,11 +6,13 @@ This file tells Claude (and any collaborator) how to work in this repo.
 
 ## 0. Ground Rules (Must Follow)
 
-1. **Docs-first**: Implementation must match docs in `Docs/`. Read docs before coding.
-2. **Update docs before significant changes**: New algorithm/signal/behavior → update docs first.
-3. **No silent breaking changes**: If schema changes, update `Docs/API.md` and add migration notes.
-4. **MVP is English-only**: No i18n complexity for MVP. Multi-language is post-MVP.
-5. **Deterministic engine**: `packages/core/` must be pure and testable. Same input → same output.
+1. **Explain before coding**: Before starting any task, explain what will be done, what files will be created/modified, and what the expected outcome is.
+2. **Ask for requirements first**: If a task requires API keys, external services, deployment setup, or user decisions, ask the user BEFORE writing any code.
+3. **Docs-first**: Implementation must match docs in `Docs/`. Read docs before coding.
+4. **Update docs before significant changes**: New algorithm/signal/behavior → update docs first.
+5. **No silent breaking changes**: If schema changes, update `Docs/API.md` and add migration notes.
+6. **MVP is English-only**: No i18n complexity for MVP. Multi-language is post-MVP.
+7. **Deterministic engine**: `packages/core/` must be pure and testable. Same input → same output.
 
 ---
 
@@ -37,22 +39,44 @@ If any ambiguity exists, **update the Docs** before implementing.
 
 ## 2. Development Workflow
 
-### Step A: Pick a Milestone
+### Step A: Explain the Task First
+Before writing any code, always:
+1. **Describe what this step does** - What is the goal? What problem does it solve?
+2. **List files to be created/modified** - So user knows what to expect
+3. **Identify prerequisites** - API keys, environment setup, dependencies
+4. **Ask user confirmation** - If any setup or decision is needed, ask first
+
+Example:
+```
+"Next step: Initialize the FastAPI backend.
+
+ I will create:
+ - apps/api/src/main.py (FastAPI app entry)
+ - apps/api/requirements.txt (dependencies)
+
+ Prerequisites needed:
+ - Python 3.11+ installed
+ - No API keys required for this step
+
+ Ready to proceed?"
+```
+
+### Step B: Pick a Milestone
 Use `Docs/PLAN.md` milestones. Implement in order:
 1. Core engine functions first
 2. Then API endpoints
 3. Then web UI
 
-### Step B: Keep Engine Deterministic
+### Step C: Keep Engine Deterministic
 - `packages/core/` should be pure Python, no I/O
 - Same input bars → same output report
 - Do not mix provider/network logic into core
 
-### Step C: Follow Schema
+### Step D: Follow Schema
 - API must return `AnalysisReport` as documented in `Docs/API.md`
 - All fields required unless marked optional
 
-### Step D: Update TODO
+### Step E: Update TODO
 - Mark tasks in `Docs/TODO.md` as you work
 - Add new tasks if scope changes
 
