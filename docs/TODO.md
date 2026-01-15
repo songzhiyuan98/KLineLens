@@ -190,14 +190,116 @@
 
 ---
 
+## Milestone 6: v4 Terminal UI ✅
+
+### Tasks
+- [x] Zones 层次化显示 (2026-01-14)
+  - [x] Top1: 实线 + label
+  - [x] Top2: 虚线，无 label
+  - [x] Top3+: 点线，更淡
+- [x] 右侧 Panel 终端化 (2026-01-14)
+  - [x] Section title 更小更灰
+  - [x] 分割线更精致
+- [x] 顶部 Header 产品级 (2026-01-14)
+  - [x] 字号更小
+  - [x] Volume 改为圆点+颜色
+- [x] Decision Line (Bloomberg 风格) (2026-01-14)
+  - [x] Action: WAIT / WATCH / CONFIRM / AVOID
+  - [x] Trigger: 具体触发条件
+  - [x] Risk: 低置信度警告（可选）
+- [x] low conf 解释 tooltip (2026-01-14)
+- [x] DIST 改为 ATR 距离 (2026-01-14)
+- [x] 1m/5m 周期降级提示 (2026-01-14)
+- [x] i18n 适配所有新 UI (2026-01-14)
+
+### Acceptance ✅
+- Zones 视觉层次清晰
+- Decision Line 提供清晰的操作指引
+- 短周期有噪音警告
+
+---
+
+## Milestone 7: Homepage Enhancement ✅
+
+### Tasks
+- [x] 首页适配终端 UI 风格 (2026-01-14)
+- [x] 更多推荐标的 (2026-01-14)
+  - [x] 美股热门 (TSLA, AAPL, NVDA, META, GOOGL, AMZN, MSFT)
+  - [x] ETF (SPY, QQQ, IWM, DIA, VTI)
+  - [x] 加密货币 (BTC/USD, ETH/USD, SOL/USD)
+- [x] 模糊搜索功能 (2026-01-14)
+  - [x] 输入时显示建议
+  - [x] 支持代码和公司名称搜索
+
+### Acceptance ✅
+- 首页风格与详情页一致
+- 推荐标的分类清晰
+- 搜索体验流畅
+
+---
+
+## Milestone 8: LLM Narrative ✅
+
+### Tasks
+- [x] LLM 服务模块 (OpenAI/Gemini 支持) (2026-01-14)
+- [x] POST /v1/narrative API 端点 (2026-01-14)
+- [x] 前端 Narrative 区块和生成按钮 (2026-01-14)
+- [x] 双模型配置 (短评: gpt-4o-mini, 报告: gpt-4o) (2026-01-14)
+
+### Acceptance ✅
+- 点击"生成报告"按钮生成 AI 解读
+- 短评使用 gpt-4o-mini，报告使用 gpt-4o
+- 支持中英文输出
+- 错误处理和加载状态
+
+---
+
+## Milestone 9: Enhanced UI + Signal Evaluation (Current)
+
+### Tasks
+- [ ] Playbook 表格化显示
+  - [ ] 一行表格格式（方向 | 入场 | 目标 | 止损 | R:R | 条件 | 风险）
+  - [ ] Plan A / Plan B 并排显示
+  - [ ] 颜色区分 LONG/SHORT
+- [ ] Evidence 增强
+  - [ ] 添加时间戳显示（何时发生）
+  - [ ] 每日缓存（localStorage）
+  - [ ] 进入页面自动加载缓存
+  - [ ] 每日清理一次（按日期判断）
+- [ ] Timeline 每日缓存
+  - [ ] localStorage 缓存策略
+  - [ ] 进入页面自动加载
+  - [ ] 每日清理机制
+- [ ] Signal Evaluation（信号评估）功能
+  - [ ] 新增数据库表存储预测记录
+  - [ ] POST /v1/signal-evaluation API（记录预测）
+  - [ ] GET /v1/signal-evaluations API（获取历史记录）
+  - [ ] PUT /v1/signal-evaluation/{id} API（更新结果）
+  - [ ] 前端信号评估 Tab（与 Playbook 切换）
+  - [ ] 表格显示：时间 | 预测 | 实际 | 结果 | 原因
+  - [ ] 正确率统计展示
+- [ ] 事件驱动的自动短评（迁移自 M8）
+  - [ ] regime shift 触发
+  - [ ] breakout state change 触发
+  - [ ] behavior delta >= 12% 触发
+
+### Acceptance
+- Playbook 以表格形式显示，信息一目了然
+- Evidence 和 Timeline 进入页面自动加载缓存数据
+- 缓存数据每天自动清理
+- Signal Evaluation 可记录预测并跟踪结果
+- 正确率统计准确显示
+
+---
+
 ## Backlog (Post-MVP)
 
+- [ ] K线 Tooltip 增强 (Volume/RVOL/Effort/Result)
 - [ ] Multi-timeframe analysis (1D + 1m alignment)
 - [ ] Redis cache for state persistence
 - [ ] WebSocket for real-time updates
 - [ ] Snapshot/replay feature
 - [ ] Polygon provider
-- [ ] LLM narration layer
 - [ ] Dark mode
 
 ---
@@ -214,3 +316,10 @@
 - [x] Milestone 5: Polish & Ship (2026-01-14)
 - [x] i18n 国际化 (2026-01-14)
 - [x] Alpaca/Alpha Vantage Providers (2026-01-14)
+- [x] TwelveData Provider (2026-01-14)
+- [x] v4 Terminal UI (2026-01-14)
+- [x] Milestone 7: Homepage Enhancement (2026-01-14)
+- [x] Milestone 8: LLM Narrative (2026-01-14)
+- [x] Playbook UI Enhancement (方向/R:R/条件/风险) (2026-01-14)
+- [x] Playbook/Timeline 位置互换 (2026-01-14)
+- [x] K线图本地时间显示 (2026-01-14)

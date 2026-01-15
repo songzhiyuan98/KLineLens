@@ -18,7 +18,7 @@ export default function Layout({ children }: LayoutProps) {
       <header style={{
         backgroundColor: '#fff',
         borderBottom: '1px solid #eaeaea',
-        padding: '0 1.5rem',
+        padding: '0 3rem',
         height: '56px',
         display: 'flex',
         alignItems: 'center',
@@ -56,7 +56,7 @@ export default function Layout({ children }: LayoutProps) {
       <footer style={{
         backgroundColor: '#fff',
         borderTop: '1px solid #eaeaea',
-        padding: '1rem 1.5rem',
+        padding: '1rem 3rem',
         textAlign: 'center',
         fontSize: '0.75rem',
         color: '#999',

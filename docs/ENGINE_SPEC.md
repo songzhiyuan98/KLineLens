@@ -1,25 +1,41 @@
 # KLineLens — Engine Spec
 
+> Market Structure + Volume-Confirmed Inference Engine
+>
 > Algorithm + Financial Logic: Structure Recognition + Behavior Inference + Stateful Narrative
 
 ---
 
-## 0. Design Principles (Financial Constraints)
+## 0. Design Principles
 
 | Principle | Description |
 |-----------|-------------|
+| **Deterministic** | Same input bars → same output report (no randomness) |
+| **Evidence-first** | Every conclusion must be traceable to specific candles |
 | **Regime First** | Determine trend/range before interpreting behavior signals |
 | **Zones over Lines** | Key levels are price BANDS, not single prices |
-| **Breakout Stages** | attempt → confirmed → fakeout (don't confirm too easily) |
+| **Volume Awareness** | Volume rules must support N/A fallback gracefully |
 | **Probability Output** | Never claim certainty; output probabilities + evidence |
 | **Invalidation Required** | Every playbook must have explicit invalidation conditions |
-| **1m Noise Warning** | Always include risk notes for high-noise timeframes |
+
+### 0.1 What KLineLens IS
+
+- Market Intelligence Terminal (structure inference + volume confirmation + explainable decision support)
+- Deterministic, backtestable, interpretable analysis engine
+- Educational tool for understanding market structure
+
+### 0.2 What KLineLens is NOT
+
+- NOT a price prediction black-box AI
+- NOT a high-frequency trading system
+- NOT optimized for PnL (no slippage, fees, money management)
 
 ---
 
-## 1. Input Data & Preprocessing
+## 1. Input Data & Reality Constraints
 
 ### 1.1 Bar Structure
+
 ```python
 Bar = {
     "t": "2026-01-13T18:00:00Z",  # UTC timestamp
@@ -27,47 +43,120 @@ Bar = {
     "h": float,  # high
     "l": float,  # low
     "c": float,  # close
-    "v": float   # volume
+    "v": float   # volume (can be 0 or unreliable)
 }
 ```
 
 ### 1.2 Preprocessing Steps
+
 1. Sort by timestamp ascending
 2. Remove duplicates
 3. Handle gaps: MVP allows gaps, report includes `data_gaps` flag if detected
 4. Timezone: All timestamps in UTC (frontend localizes for display)
 
+### 1.3 Volume Data Quality Reality
+
+**Problem:** Volume is not always reliable:
+- Some free providers have missing/delayed 1m volume
+- Volume must be interpreted contextually (strength vs normal), not as absolute value
+
+**Design Principle:**
+- Volume available → strict volume-price confirmation enabled
+- Volume unavailable → mark N/A, reduce signal confidence, never silent output
+
+### 1.4 Provider Data Quality Tiers
+
+| Provider | 1D Volume | 1m Volume | Latency | Best For |
+|----------|-----------|-----------|---------|----------|
+| TwelveData | Strong | Strong | ~170ms | Real-time intraday (recommended) |
+| Yahoo | Strong | Unstable | 15-20min | Daily structure only |
+| Alpaca (IEX) | Good | Good | Low | Free minute confirmation |
+| Polygon | Strong | Strong | Plan-dependent | High quality Pro |
+
 ---
 
 ## 2. Feature Layer (Interpretable Metrics)
 
-### 2.1 Volatility & Range
-| Feature | Formula | Purpose |
-|---------|---------|---------|
-| `ATR(14)` | Average True Range over 14 bars | Zone width, ZigZag threshold |
-| `range` | `high - low` | Current bar volatility |
+### 2.1 ATR (Volatility Baseline)
 
-### 2.2 Volume Relative Indicators
+Used for ALL normalization and threshold control:
+- Zone bin width
+- Breakout result quality
+- Distance-to-zone
+- Stop/target estimation
+
+```python
+ATR(n) = SMA(TrueRange, n)  # default n=14
+TrueRange = max(high-low, abs(high-prev_close), abs(low-prev_close))
+```
+
+### 2.2 RVOL (Relative Volume) — Core Volume Metric
+
+**Critical: NEVER use absolute volume for judgment.**
+
+```python
+RVOL = volume / MA(volume, N)  # N=30 for 1m, N=20 for 1d
+```
+
+| RVOL Value | Interpretation |
+|------------|----------------|
+| < 0.7 | Low volume (dry-up) |
+| 0.7 - 1.3 | Normal |
+| 1.3 - 1.8 | Elevated |
+| >= 1.8 | High volume spike |
+
+**N/A Handling:**
+- If volume = 0 or missing → RVOL = N/A
+- Display "Volume N/A - confirmation unavailable" in UI
+- Reduce signal confidence by 30%
+
+#### 2.2.1 Optional Enhancement: Time-of-Day RVOL
+
+Intraday volume has U-shape seasonality (higher at open/close).
+
+```python
+RVOL_TOD = vol[t] / mean(vol at same minute-of-day over last K days)
+```
+
+> MVP: Use simple RVOL. TOD adjustment is future enhancement.
+
+### 2.3 Effort vs Result (VSA Core)
+
+> Volume Spread Analysis: Use Effort (volume) and Result (price movement) to infer institutional behavior.
+
+```python
+effort = RVOL
+result = true_range / ATR  # or abs(close - open) / ATR
+```
+
+**Four Quadrant Interpretation:**
+
+| Effort | Result | Interpretation |
+|--------|--------|----------------|
+| High | High | Genuine breakout / Trend push |
+| High | Low | Absorption (accumulation/distribution) ⭐ |
+| Low | High | Controlled move / Impulse |
+| Low | Low | Exhaustion / Consolidation |
+
+**Key Insight:** High effort + low result = major player activity (absorption at key levels).
+
+### 2.4 Candlestick Structure
+
 | Feature | Formula | Interpretation |
 |---------|---------|----------------|
-| `avg_vol` | `SMA(volume, N)` | N=30 for 1m, N=20 for 1d |
-| `volume_ratio` | `volume / avg_vol` | >1.5 = high volume, <0.7 = low volume |
-
-### 2.3 Candlestick Structure
-| Feature | Formula | Interpretation |
-|---------|---------|----------------|
-| `body` | `abs(close - open)` | Price movement direction strength |
+| `body` | `abs(close - open)` | Price movement magnitude |
 | `body_ratio` | `body / range` | 0 = doji, 1 = marubozu |
 | `upper_wick` | `high - max(open, close)` | Supply pressure above |
 | `lower_wick` | `min(open, close) - low` | Demand absorption below |
 | `wick_ratio_up` | `upper_wick / range` | High = rejection from above |
 | `wick_ratio_low` | `lower_wick / range` | High = demand recovery |
 
-### 2.4 Move Efficiency (Tape-reading Proxy)
+### 2.5 Move Efficiency (Tape-reading Proxy)
+
 | Feature | Formula | Interpretation |
 |---------|---------|----------------|
-| `up_eff` | `max(close - open, 0) / volume` | Low with high volume = supply absorption |
-| `down_eff` | `max(open - close, 0) / volume` | Low with high volume = demand absorption |
+| `up_eff` | `max(close - open, 0) / volume` | Low with high vol = supply absorption |
+| `down_eff` | `max(open - close, 0) / volume` | Low with high vol = demand absorption |
 
 ---
 
@@ -76,30 +165,37 @@ Bar = {
 ### 3.1 Swing Points (Fractal Method)
 
 **Algorithm:**
-- Parameter: `n` (window size, look left/right n bars)
-- `swing_high`: bar where `high` is the highest in `[i-n, i+n]`
-- `swing_low`: bar where `low` is the lowest in `[i-n, i+n]`
+```python
+swing_high[i] = high[i] == max(high[i-n : i+n+1])
+swing_low[i]  = low[i]  == min(low[i-n : i+n+1])
+```
 
 **Default Parameters:**
-| Timeframe | n |
-|-----------|---|
+
+| Timeframe | n (fractal order) |
+|-----------|-------------------|
 | 1m | 4 |
 | 5m | 3 |
 | 1d | 2-3 |
 
 **Output:**
 ```python
-swing_highs: List[{"t": timestamp, "price": float}]
-swing_lows: List[{"t": timestamp, "price": float}]
+SwingPoint = {
+    "index": int,       # bar index for click-to-locate
+    "price": float,
+    "bar_time": timestamp,
+    "is_high": bool
+}
 ```
 
-**Optional Noise Filter:** ZigZag with ATR threshold (ignore moves < 0.8-1.5 * ATR)
+**Optional Noise Filter:** ZigZag with ATR threshold (ignore moves < 0.8-1.5 × ATR)
 
 ---
 
 ### 3.2 Regime Classification (Trend/Range)
 
 **Definitions:**
+
 | Regime | Pattern |
 |--------|---------|
 | `uptrend` | Higher Highs + Higher Lows (HH+HL) dominant |
@@ -109,12 +205,13 @@ swing_lows: List[{"t": timestamp, "price": float}]
 **Algorithm:**
 1. Take last `m` swing points (m = 6-10)
 2. Count HH/HL vs LL/LH patterns
-3. Regime = argmax(pattern_count)
-4. Confidence = max_ratio or margin between top two
+3. If trend consistency >= 70% → up/down
+4. Else → range
+5. Confidence = max_ratio or margin between top two
 
 **Output:**
 ```python
-{
+MarketState = {
     "regime": "uptrend" | "downtrend" | "range",
     "confidence": 0.0 - 1.0
 }
@@ -128,26 +225,49 @@ swing_lows: List[{"t": timestamp, "price": float}]
 
 **Algorithm:**
 1. **Input:** swing_lows → support candidates, swing_highs → resistance candidates
-2. **Clustering:** Group by price bins (bin_width = 0.5 * ATR)
+2. **Clustering:** Group by price bins (bin_width = 0.5 × ATR)
 3. **Zone generation:**
-   - `zone.low = min(cluster_prices) - w`
-   - `zone.high = max(cluster_prices) + w`
-   - `w = 0.35 * ATR` (adjustable)
-4. **Scoring:**
-   - `touches` = cluster point count
-   - `reaction_strength` = avg reversal magnitude after touch
-   - `score = normalize(a * touches + b * reaction_strength)`
+   - `zone.low = min(cluster_prices) - padding`
+   - `zone.high = max(cluster_prices) + padding`
+   - padding: 0.35 × ATR (1m) / 0.5 × ATR (1d)
+4. **Scoring:** See Zone Strength below
+
+### 3.4 Zone Strength Scoring (Enhanced)
+
+Each zone has interpretable strength score:
+
+| Factor | Weight | Description |
+|--------|--------|-------------|
+| `tests` | 0.3 | Number of times price touched zone |
+| `rejections` | 0.3 | Number of times price reversed from zone |
+| `reaction_magnitude` | 0.2 | Average reversal size (in ATR) |
+| `recency` | 0.2 | Decay factor for older touches |
+
+```python
+strength = w1 * normalize(tests) +
+           w2 * normalize(rejections) +
+           w3 * normalize(avg_reaction / ATR) +
+           w4 * recency_factor
+```
 
 **Output:**
 ```python
-support_zones: List[{"low": float, "high": float, "score": float, "touches": int}]
-resistance_zones: List[{"low": float, "high": float, "score": float, "touches": int}]
-# Return Top K zones (K = 3-6)
+Zone = {
+    "low": float,
+    "high": float,
+    "score": float,      # 0-1, normalized strength
+    "touches": int,
+    "rejections": int,   # NEW
+    "last_reaction": float,  # NEW: magnitude in ATR
+    "last_test_time": timestamp  # NEW: for recency
+}
 ```
+
+**UI Display:** Show only Key Zones (Top N by score, default N=5)
 
 ---
 
-### 3.4 Range Box (Consolidation Detection)
+### 3.5 Range Box (Consolidation Detection)
 
 **Conditions:**
 - Regime = `range`
@@ -156,7 +276,7 @@ resistance_zones: List[{"low": float, "high": float, "score": float, "touches": 
 
 **Output:**
 ```python
-range_box: {
+range_box = {
     "support_zone": Zone,
     "resistance_zone": Zone,
     "duration_bars": int
@@ -165,41 +285,55 @@ range_box: {
 
 ---
 
-### 3.5 Breakout / Fakeout State Machine
+### 3.6 Breakout State Machine (FSM)
 
 **States:**
+
 | State | Definition |
 |-------|------------|
 | `idle` | No breakout activity |
 | `attempt` | Price crosses zone boundary |
-| `confirmed` | Close outside zone + volume + duration |
+| `confirmed` | 3-factor confirmation passed |
 | `fakeout` | Attempt followed by quick return to zone |
 
-**Confirmation Rules (Upside Breakout Example):**
-```
-attempt:
-  - high > resistance.high
+#### 3.6.1 Attempt Breakout
 
-confirmed:
-  - close > resistance.high + epsilon
-  - volume_ratio >= Vth (default: 1.8)
-  - consecutive Nc closes outside (default: Nc = 2)
+Trigger conditions:
+- close touches/briefly crosses zone boundary
+- OR wick sweep (high/low beyond zone)
 
-fakeout:
-  - Within M bars (default: M = 3) after attempt
-  - close returns inside zone
-  - OR: long upper wick + high volume but no follow-through
-```
+#### 3.6.2 Confirmed Breakout (3-Factor Confirmation)
+
+**All three factors required:**
+
+| Factor | Condition | Description |
+|--------|-----------|-------------|
+| Structure | `confirm_closes >= 2` | Consecutive closes outside zone |
+| Volume | `RVOL >= 1.8` | Volume spike confirmation |
+| Result | `result >= 0.6 ATR` | Meaningful price push |
+
+**If RVOL = N/A:**
+- Cannot confirm → stays as `attempt`
+- Display: "Volume unavailable - confirmation pending"
+
+#### 3.6.3 Fakeout Detection
+
+Conditions (any):
+- Within `fakeout_bars` (default: 3) after attempt, close returns inside zone
+- OR: High effort + low result pattern (absorption failure)
+- OR: Long wick + high volume but no follow-through
 
 **Output:**
 ```python
-signals: List[{
+Signal = {
     "type": "breakout_attempt" | "breakout_confirmed" | "fakeout",
     "direction": "up" | "down",
     "level": float,
     "confidence": float,
-    "bar_time": timestamp
-}]
+    "bar_time": timestamp,
+    "bar_index": int,  # NEW: for click-to-locate
+    "volume_quality": "confirmed" | "pending" | "unavailable"  # NEW
+}
 ```
 
 ---
@@ -212,10 +346,10 @@ signals: List[{
 
 | Class | Definition | Key Signals |
 |-------|------------|-------------|
-| **Accumulation** | Absorption at support | High volume + low down_eff + demand wicks |
+| **Accumulation** | Absorption at support | High vol + low down_eff + demand wicks |
 | **Shakeout** | Stop hunt + reclaim | Break support → quick reclaim + long lower wick |
-| **Markup** | Breakout + continuation | Confirmed breakout + HL structure + pullback on low volume |
-| **Distribution** | Supply at resistance | High volume + low up_eff + rejection wicks |
+| **Markup** | Breakout + continuation | Confirmed breakout + HL structure + low vol pullback |
+| **Distribution** | Supply at resistance | High vol + low up_eff + rejection wicks |
 | **Markdown** | Breakdown + continuation | Confirmed breakdown + LH structure + weak bounces |
 
 ### 4.2 Score Components
@@ -223,20 +357,19 @@ signals: List[{
 #### (A) Accumulation Score
 ```
 + near_support (0/1)
-+ volume_ratio (normalized)
++ RVOL (normalized)
 + (1 - down_eff_norm)
 + wick_ratio_low
++ effort_high_result_low (0/1)  # NEW: VSA absorption
 ```
-**Evidence template:** "High volume at support but price won't drop (low down_eff)"
 
 #### (B) Shakeout Score
 ```
 + sweep_support (0/1): low < support.low
 + reclaim (0/1): close >= support.low
 + wick_ratio_low
-+ volume_ratio
++ RVOL
 ```
-**Evidence template:** "Broke support then quickly reclaimed (sweep + reclaim)"
 
 #### (C) Markup Score
 ```
@@ -245,17 +378,15 @@ signals: List[{
 + (advance_vol - pullback_vol)
 + up_eff_norm
 ```
-**Evidence template:** "Breakout confirmed + higher lows + pullback on low volume"
 
 #### (D) Distribution Score
 ```
 + near_resistance (0/1)
-+ volume_ratio
++ RVOL
 + (1 - up_eff_norm)
 + wick_ratio_up
-+ rejection_count_norm
++ effort_high_result_low (0/1)  # NEW: VSA absorption
 ```
-**Evidence template:** "High volume at resistance but price won't rise (low up_eff)"
 
 #### (E) Markdown Score
 ```
@@ -264,7 +395,6 @@ signals: List[{
 + low pullback_vol
 + down_eff_norm
 ```
-**Evidence template:** "Breakdown confirmed + lower highs + weak bounces"
 
 ### 4.3 Score → Probability
 
@@ -282,7 +412,7 @@ evidence = top_3_evidence_for(dominant)
 
 **Output:**
 ```python
-behavior: {
+behavior = {
     "probabilities": {
         "accumulation": 0.21,
         "shakeout": 0.62,
@@ -291,26 +421,62 @@ behavior: {
         "markdown": 0.02
     },
     "dominant": "shakeout",
-    "evidence": [
-        {
-            "behavior": "shakeout",
-            "bar_time": "...",
-            "volume_ratio": 2.1,
-            "wick_ratio": 0.67,
-            "note_key": "broke_support_then_reclaimed"
-        }
-    ]
+    "evidence": [...]  # See Evidence System
 }
 ```
 
 ---
 
-## 5. Stateful Narrative (Timeline State Machine)
+## 5. Evidence System (Traceable Explanation)
 
-### 5.1 Purpose
+**Principle:** Probabilities alone explain nothing. Every conclusion must have traceable evidence.
+
+### 5.1 Evidence Structure
+
+```python
+Evidence = {
+    "type": str,          # VOLUME_SPIKE, REJECTION, SWEEP, ABSORPTION, BREAKOUT
+    "behavior": str,      # Which behavior this supports
+    "severity": str,      # low, med, high
+    "bar_time": timestamp,
+    "bar_index": int,     # For click-to-locate in chart
+    "metrics": {
+        "rvol": float,
+        "wick_ratio": float,
+        "effort": float,
+        "result": float
+    },
+    "note_key": str       # i18n key for explanation
+}
+```
+
+### 5.2 Evidence Templates
+
+| Behavior | Note Key | Trigger |
+|----------|----------|---------|
+| Accumulation | `evidence.accumulation.absorption` | High effort + low result near support |
+| Shakeout | `evidence.shakeout.sweep_reclaim` | Sweep below support + reclaim with elevated RVOL |
+| Markup | `evidence.markup.low_vol_pullback` | Low effort pullback in uptrend |
+| Distribution | `evidence.distribution.absorption` | High effort + low result near resistance |
+| Markdown | `evidence.markdown.weak_bounce` | Weak bounce on low volume in downtrend |
+
+### 5.3 Click-to-Locate Anchors
+
+Every evidence must include:
+- `bar_index`: integer index for chart highlighting
+- `bar_time`: timestamp for tooltip
+- `zone_id` or `level`: related structure element
+
+---
+
+## 6. Stateful Narrative (Timeline)
+
+### 6.1 Purpose
+
 Solve the "LLM forgets context" problem: system remembers previous state and tracks evolution.
 
-### 5.2 State Store (per ticker + timeframe)
+### 6.2 State Store (per ticker + timeframe)
+
 ```python
 State = {
     "last_regime": str,
@@ -321,93 +487,347 @@ State = {
 }
 ```
 
-### 5.3 Event Write Rules (Avoid Noise)
-Write to timeline only when ANY condition is met:
-- Dominant behavior changed (e.g., shakeout → distribution)
-- Dominant probability delta >= 0.12
-- Breakout state changed (attempt → confirmed, attempt → fakeout)
-- Regime changed (range → uptrend)
+### 6.3 Critical Events (Hard Events)
 
-### 5.4 Timeline Event Structure
+Write to timeline when ANY:
+- Regime changed (e.g., range → uptrend)
+- Dominant behavior changed (e.g., shakeout → distribution)
+- Breakout state changed (attempt → confirmed, attempt → fakeout)
+- Probability delta >= 0.12
+
+### 6.4 Soft Events (Narrative Events) — NEW
+
+To avoid empty timeline and maintain product feel:
+
+| Event Type | Trigger |
+|------------|---------|
+| `zone_approached` | Price within 0.5 ATR of zone |
+| `zone_tested` | Price touched zone |
+| `zone_rejected` | Price reversed from zone |
+| `zone_accepted` | Price closed through zone |
+| `spring` | Sweep below support + reclaim (Wyckoff term) |
+| `upthrust` | Sweep above resistance + rejection (Wyckoff term) |
+| `absorption_clue` | High effort + low result detected |
+| `volume_spike` | RVOL >= 2.0 |
+| `volume_dryup` | RVOL <= 0.5 for 3+ bars |
+| `new_swing` | New swing high/low formed |
+
+### 6.5 Timeline Event Structure
+
 ```python
-timeline_event = {
+TimelineEvent = {
     "ts": timestamp,
-    "event_type": "shakeout_prob_up" | "regime_change" | "breakout_confirmed" | ...,
-    "delta": float,  # probability change
-    "reason_key": str  # template key for i18n
+    "event_type": str,
+    "delta": float,          # For prob changes
+    "reason_key": str,       # i18n key
+    "bar_index": int,        # For click-to-locate
+    "severity": str          # info, warning, critical
 }
 ```
 
 ---
 
-## 6. Playbook Generation (Conditional Trading Plans)
+## 7. Playbook Generation (Conditional Plans)
 
-### 6.1 Template Logic
+### 7.1 Template Logic by Regime
 
-**Plan A (Trend Continuation / Breakout):**
-```
-If: breakout_confirmed above {resistance_zone.high} with volume_ratio >= {Vth}
-Target: next resistance zone OR current_price + k * ATR
-Invalidation: close back into zone OR below {resistance_zone.low}
-Risk: {risk_key}
+**Uptrend:**
+- Plan A: Pullback to support → continuation
+- Plan B: Breakout above resistance → new leg
+
+**Downtrend:**
+- Plan A: Rally to resistance → rejection
+- Plan B: Breakdown below support → new leg
+
+**Range:**
+- Plan A: Support bounce
+- Plan B: Resistance fade
+
+### 7.2 Plan Structure
+
+```python
+PlaybookPlan = {
+    "name": "Plan A" | "Plan B",
+    "condition_key": str,      # i18n key for condition
+    "level": float,            # Key price level
+    "target": float,           # Target price
+    "invalidation": float,     # Stop level
+    "risk_key": str            # i18n key for risk warning
+}
 ```
 
-**Plan B (Invalidation / Reversal):**
-```
-If: breakdown_confirmed below {support_zone.low} with volume_ratio >= {Vth}
-Target: next support zone OR current_price - k * ATR
-Invalidation: close back above {support_zone.high}
-Risk: {risk_key}
-```
+### 7.3 Risk Keys
 
-### 6.2 Risk Keys
 | Key | Description |
 |-----|-------------|
-| `noise_high_1m` | 1-minute timeframe has high noise |
-| `liquidity_risk` | Low liquidity may cause slippage |
-| `event_risk` | Potential market-moving events |
-
-### 6.3 Output
-```python
-playbook: [
-    {
-        "name_key": "plan_a",
-        "if_key": "if_breakout_confirmed",
-        "level": 253.3,
-        "target": 259.1,
-        "invalidation": 251.8,
-        "risk_key": "noise_high_1m"
-    },
-    {
-        "name_key": "plan_b",
-        "if_key": "if_breakdown_confirmed",
-        "level": 246.0,
-        "target": 241.8,
-        "invalidation": 247.2,
-        "risk_key": "liquidity_risk"
-    }
-]
-```
+| `risk.noise_high_1m` | 1-minute timeframe has high noise |
+| `risk.liquidity_low` | Low liquidity may cause slippage |
+| `risk.event_pending` | Potential market-moving events |
+| `risk.volume_unconfirmed` | Volume data unavailable |
+| `risk.false_breakout` | Fakeout risk elevated |
+| `risk.trend_continuation` | Counter-trend risk |
 
 ---
 
-## 7. Default Parameters (MVP)
+## 8. Multi-Timeframe Logic (Future Enhancement)
 
-### 7.1 1-Minute Timeframe
-| Parameter | Value |
-|-----------|-------|
-| Swing fractal n | 4 |
-| Volume SMA N | 30 |
-| Breakout volume threshold Vth | 1.8 |
-| Confirm candles Nc | 2 |
-| Fakeout window M | 3 |
-| Zone width w | 0.35 * ATR |
+### 8.1 Core Principle
 
-### 7.2 1-Day Timeframe
-| Parameter | Value |
-|-----------|-------|
-| Swing fractal n | 2-3 |
-| Volume SMA N | 20 |
-| Zone width w | 0.5 * ATR |
+- **1D**: Primary narrative (structure/regime/behavior/playbook)
+- **1m/5m**: Execution confirmation (volume, breakout quality, zone interaction)
 
-> All parameters must be configurable. Start with defaults, allow override via API params in future.
+### 8.2 Output Structure (Future)
+
+```python
+AnalysisReport = {
+    "primary_tf_summary": {...},   # From 1D
+    "entry_tf_summary": {...},     # From 1m/5m
+    "alignment": str               # aligned, conflicting, neutral
+}
+```
+
+> MVP: Single timeframe. Multi-TF is V2 enhancement.
+
+---
+
+## 9. Default Parameters (MVP)
+
+### 9.1 Common Parameters
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| `atr_period` | 14 | Standard ATR calculation |
+| `volume_period` | 30 (1m), 20 (1d) | Volume MA window |
+| `swing_n` | 4 (1m), 2-3 (1d) | Fractal order |
+| `regime_m` | 6 | Swing points for regime |
+| `max_zones` | 5 | Top N zones to display |
+
+### 9.2 Breakout Parameters
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| `volume_threshold` | 1.8 | RVOL for confirmation |
+| `result_threshold` | 0.6 | ATR multiple for result |
+| `confirm_closes` | 2 | Consecutive closes needed |
+| `fakeout_bars` | 3 | Quick reversal window |
+
+### 9.3 Timeline Parameters
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| `probability_threshold` | 0.12 | Delta for event emission |
+| `zone_approach_atr` | 0.5 | ATR multiple for "approached" |
+
+### 9.4 Zone Parameters by Timeframe
+
+| Timeframe | Bin Width | Padding |
+|-----------|-----------|---------|
+| 1m | 0.5 × ATR | 0.35 × ATR |
+| 5m | 0.5 × ATR | 0.4 × ATR |
+| 1d | 0.5 × ATR | 0.5 × ATR |
+
+---
+
+## 10. Algorithm Summary (Product Description)
+
+### English
+
+> KLineLens uses a deterministic market structure engine combining swing-based zone clustering, regime classification, and a volume-confirmed breakout state machine. It infers Wyckoff-style behaviors using probabilistic scoring with VSA (Volume Spread Analysis) principles, and outputs traceable evidence linked to specific candles.
+
+### Chinese
+
+> KLineLens 使用确定性结构推断引擎：波段聚类支撑阻力、趋势状态识别、以及成交量确认的突破状态机。系统通过 VSA（量价分析）原则进行概率化评分推断 Wyckoff 行为，并提供可追溯证据链定位到具体 K 线。
+
+### Prohibited Expressions
+
+- "AI predicts price"
+- "Guaranteed signal"
+- "100% accurate"
+- "稳赚" / "必赚"
+
+---
+
+## 11. Signal Evaluation System (Prediction Tracking)
+
+### 11.1 Purpose
+
+Track prediction accuracy over time to:
+- Validate engine performance
+- Identify which signal types are most reliable
+- Provide feedback loop for parameter tuning
+- Build user confidence through transparency
+
+### 11.2 Evaluation Workflow
+
+```
+1. Signal Generated → 2. User Records Prediction → 3. Market Moves → 4. User Evaluates Result
+```
+
+### 11.3 What Gets Evaluated
+
+| Evaluable Signal | Criteria |
+|------------------|----------|
+| `breakout_confirmed` | Did breakout lead to continuation? |
+| `fakeout` | Did price return to range as predicted? |
+| `breakout_attempt` | Did attempt confirm or fail? |
+| `behavior_dominant` | Did predicted behavior play out? |
+
+### 11.4 Evaluation Criteria
+
+#### Result Types
+
+| Result | Definition |
+|--------|------------|
+| `target_hit` | Price reached target within evaluation window |
+| `invalidation_hit` | Price hit stop/invalidation level |
+| `partial_correct` | Direction correct, target not reached |
+| `direction_wrong` | Price moved opposite to prediction |
+| `timeout` | No significant move within window |
+
+#### Evaluation Window
+
+| Timeframe | Window | Description |
+|-----------|--------|-------------|
+| 1m | 60 bars (1 hour) | Short-term scalp evaluation |
+| 5m | 48 bars (4 hours) | Intraday evaluation |
+| 1d | 10 bars (2 weeks) | Swing evaluation |
+
+### 11.5 Statistics Calculation
+
+```python
+accuracy_rate = correct / (correct + incorrect)  # Excludes pending
+
+by_signal_type = {
+    signal_type: {
+        "total": count,
+        "correct": correct_count,
+        "accuracy": correct_count / count
+    }
+    for signal_type in signal_types
+}
+
+# Confidence-weighted accuracy (optional enhancement)
+weighted_accuracy = sum(confidence * is_correct) / sum(confidence)
+```
+
+### 11.6 Database Schema
+
+```sql
+CREATE TABLE signal_evaluations (
+    id TEXT PRIMARY KEY,
+    ticker TEXT NOT NULL,
+    tf TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    signal_type TEXT NOT NULL,
+    direction TEXT NOT NULL,
+    predicted_behavior TEXT NOT NULL,
+    entry_price REAL NOT NULL,
+    target_price REAL NOT NULL,
+    invalidation_price REAL NOT NULL,
+    confidence REAL NOT NULL,
+    notes TEXT,
+    status TEXT DEFAULT 'pending',
+    result TEXT,
+    actual_outcome TEXT,
+    evaluation_notes TEXT,
+    evaluated_at TIMESTAMP,
+    INDEX idx_ticker_tf (ticker, tf),
+    INDEX idx_status (status),
+    INDEX idx_created_at (created_at)
+);
+```
+
+### 11.7 Display Recommendations
+
+**Table Columns:**
+1. 时间 (Created At)
+2. 信号类型 (Signal Type)
+3. 方向 (Direction)
+4. 入场/目标/止损 (Prices)
+5. 状态 (Status)
+6. 结果 (Result)
+7. 原因 (Notes)
+
+**Statistics Display:**
+- 总预测数 / 正确 / 错误 / 待评估
+- 准确率百分比（带进度条）
+- 按信号类型分解
+
+---
+
+## 12. Frontend Caching Strategy
+
+### 12.1 Evidence & Timeline Daily Cache
+
+**Purpose:** Preserve accumulated evidence/timeline across page refreshes within same trading day.
+
+**Cache Key Format:**
+```
+klinelens:evidence:{ticker}:{tf}:{date}
+klinelens:timeline:{ticker}:{tf}:{date}
+```
+
+**Cache Structure:**
+```typescript
+interface CachedData {
+  date: string;           // YYYY-MM-DD
+  ticker: string;
+  tf: string;
+  items: Evidence[] | TimelineEvent[];
+  lastUpdated: string;    // ISO timestamp
+}
+```
+
+### 12.2 Cache Lifecycle
+
+1. **On Page Load:**
+   - Check localStorage for today's cache
+   - If exists and date matches today → load cached items
+   - If date is old → clear cache, start fresh
+
+2. **On Data Refresh:**
+   - Merge new items with cached items (dedupe by bar_index)
+   - Update cache in localStorage
+   - Update lastUpdated timestamp
+
+3. **Daily Cleanup:**
+   - Compare cache date with today
+   - If different → clear and reset
+
+### 12.3 Merge Strategy
+
+```typescript
+function mergeEvidence(cached: Evidence[], fresh: Evidence[]): Evidence[] {
+  const merged = [...cached];
+  for (const item of fresh) {
+    const exists = merged.some(e => e.bar_index === item.bar_index && e.type === item.type);
+    if (!exists) {
+      merged.push(item);
+    }
+  }
+  return merged.sort((a, b) => b.bar_index - a.bar_index);  // Newest first
+}
+```
+
+### 12.4 Storage Limits
+
+- Max items per cache: 100
+- When exceeded: Keep most recent 100, discard oldest
+- localStorage quota: ~5MB per origin
+
+---
+
+## Appendix: Key Terms
+
+| Term | Definition |
+|------|------------|
+| RVOL | Relative Volume (volume strength vs normal) |
+| VSA | Volume Spread Analysis (量价分析) |
+| Wyckoff | 5-phase behavior model (Accumulation/Shakeout/Markup/Distribution/Markdown) |
+| FSM | Finite State Machine for breakout state transitions |
+| Evidence | Traceable explanation linked to specific candles |
+| Timeline | Structural narrative flow recording significant changes |
+| ATR | Average True Range (volatility measure) |
+| Effort | Volume intensity (RVOL) |
+| Result | Price movement magnitude (range / ATR) |
+| Signal Evaluation | Prediction tracking system for accuracy measurement |

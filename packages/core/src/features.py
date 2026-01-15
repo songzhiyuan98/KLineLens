@@ -5,13 +5,14 @@ KLineLens 特征计算模块
 所有函数都是纯函数，相同输入产生相同输出。
 
 主要特征:
-- ATR: 平均真实波幅，用于区域宽度计算
-- Volume Ratio: 成交量比率，识别异常放量
+- ATR: 平均真实波幅，用于区域宽度计算和归一化
+- RVOL: 相对成交量（Relative Volume），成交量强度 vs 正常水平
+- Effort vs Result: VSA 核心指标，推断主力行为
 - Wick Ratios: 影线比率，识别买卖压力
 - Efficiency: 效率指标，识别吸筹/派发
 """
 
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 import numpy as np
 from .models import Bar
 
@@ -21,6 +22,7 @@ def calculate_atr(bars: List[Bar], period: int = 14) -> np.ndarray:
     计算平均真实波幅（ATR）
 
     使用 Wilder 平滑方法计算 ATR。
+    用于所有归一化和阈值控制：zone bin width, breakout result, distance-to-zone
 
     参数:
         bars: K 线列表（最少需要 period + 1 根）
@@ -69,36 +71,62 @@ def calculate_atr(bars: List[Bar], period: int = 14) -> np.ndarray:
     return atr
 
 
-def calculate_volume_ratio(bars: List[Bar], period: int = 30) -> np.ndarray:
+def calculate_rvol(bars: List[Bar], period: int = 30) -> np.ndarray:
     """
-    计算成交量比率（相对于移动平均）
+    计算相对成交量 RVOL (Relative Volume)
+
+    CRITICAL: 永远不要使用绝对成交量进行判断，必须使用相对成交量。
 
     参数:
         bars: K 线列表
-        period: 成交量均线周期（默认 30）
+        period: 成交量均线周期（默认 30 for 1m, 20 for 1d）
 
     返回:
-        成交量比率数组（volume / SMA(volume)）
+        RVOL 数组（volume / SMA(volume)）
         前 period-1 个值为 NaN
+        如果成交量为 0 或不可用，返回 NaN
 
-    说明:
-        volume_ratio >= 1.8 表示异常放量（突破确认）
-        volume_ratio <= 0.7 表示缩量
+    RVOL 解释:
+        < 0.7  : 低量（dry-up，枯竭）
+        0.7-1.3: 正常
+        1.3-1.8: 放量
+        >= 1.8 : 高量（spike，确认信号）
+
+    N/A 处理:
+        如果 volume = 0 或缺失 → RVOL = NaN
+        前端显示 "Volume N/A - confirmation unavailable"
+        信号置信度降低 30%
     """
     n = len(bars)
     volumes = np.array([bar.v for bar in bars])
 
-    # 计算成交量简单移动平均
-    volume_ratio = np.full(n, np.nan)
+    # 计算 RVOL
+    rvol = np.full(n, np.nan)
 
     for i in range(period - 1, n):
-        avg_vol = np.mean(volumes[i - period + 1:i + 1])
-        if avg_vol > 0:
-            volume_ratio[i] = volumes[i] / avg_vol
-        else:
-            volume_ratio[i] = 0.0
+        # 检查当前成交量是否有效
+        if volumes[i] <= 0:
+            rvol[i] = np.nan
+            continue
 
-    return volume_ratio
+        # 计算均线（排除 0 值）
+        window_vols = volumes[i - period + 1:i + 1]
+        valid_vols = window_vols[window_vols > 0]
+
+        if len(valid_vols) < period * 0.5:  # 如果超过一半数据无效
+            rvol[i] = np.nan
+        elif np.mean(valid_vols) > 0:
+            rvol[i] = volumes[i] / np.mean(valid_vols)
+        else:
+            rvol[i] = np.nan
+
+    return rvol
+
+
+# 保持向后兼容的别名
+def calculate_volume_ratio(bars: List[Bar], period: int = 30) -> np.ndarray:
+    """向后兼容别名，请使用 calculate_rvol"""
+    return calculate_rvol(bars, period)
 
 
 def calculate_wick_ratios(bar: Bar) -> Tuple[float, float]:
@@ -183,6 +211,79 @@ def calculate_efficiency(bar: Bar, volume: float) -> Tuple[float, float]:
     return (up_eff, down_eff)
 
 
+def calculate_effort_result(bars: List[Bar],
+                           rvol: np.ndarray,
+                           atr: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    计算 Effort vs Result (VSA 核心指标)
+
+    Volume Spread Analysis: 用 Effort（成交量）和 Result（价格推进）推断主力行为
+
+    参数:
+        bars: K 线列表
+        rvol: 相对成交量数组
+        atr: ATR 数组
+
+    返回:
+        (effort, result) 元组，两个数组
+
+    算法:
+        effort = RVOL（成交量强度）
+        result = true_range / ATR（价格推进强度）
+
+    四象限解释（VSA 核心）:
+        | Effort | Result | 解释                          |
+        |--------|--------|-------------------------------|
+        | High   | High   | 真突破 / 趋势推进             |
+        | High   | Low    | 吸筹/派发（Absorption）⭐      |
+        | Low    | High   | 控盘推进 / 脉冲               |
+        | Low    | Low    | 量能枯竭 / 盘整               |
+
+    关键洞察:
+        High Effort + Low Result = 主力活动（关键位置的吸收）
+    """
+    n = len(bars)
+
+    # Effort = RVOL（直接使用）
+    effort = rvol.copy()
+
+    # Result = true_range / ATR
+    result = np.full(n, np.nan)
+
+    for i in range(n):
+        if np.isnan(atr[i]) or atr[i] <= 0:
+            continue
+
+        true_range = bars[i].h - bars[i].l
+        result[i] = true_range / atr[i]
+
+    return (effort, result)
+
+
+def is_high_effort_low_result(effort: float, result: float,
+                              effort_threshold: float = 1.5,
+                              result_threshold: float = 0.6) -> bool:
+    """
+    判断是否为高 Effort 低 Result（VSA 吸收模式）
+
+    参数:
+        effort: RVOL 值
+        result: result 值 (range/ATR)
+        effort_threshold: Effort 阈值（默认 1.5）
+        result_threshold: Result 阈值（默认 0.6）
+
+    返回:
+        True 如果是吸收模式
+
+    金融意义:
+        高成交量但价格没有大幅移动 = 主力在关键位置吸收筹码
+    """
+    if np.isnan(effort) or np.isnan(result):
+        return False
+
+    return effort >= effort_threshold and result <= result_threshold
+
+
 def calculate_features(bars: List[Bar],
                        atr_period: int = 14,
                        volume_period: int = 30) -> Dict[str, np.ndarray]:
@@ -197,7 +298,10 @@ def calculate_features(bars: List[Bar],
     返回:
         包含所有特征的字典:
         - 'atr': ATR 数组
-        - 'volume_ratio': 成交量比率数组
+        - 'rvol': 相对成交量数组 (RVOL)
+        - 'volume_ratio': rvol 的别名（向后兼容）
+        - 'effort': Effort 数组（VSA）
+        - 'result': Result 数组（VSA）
         - 'wick_up': 上影线比率数组
         - 'wick_low': 下影线比率数组
         - 'up_eff': 上涨效率数组
@@ -209,8 +313,9 @@ def calculate_features(bars: List[Bar],
 
     使用示例:
         features = calculate_features(bars)
-        current_atr = features['atr'][-1]
-        is_high_volume = features['volume_ratio'][-1] >= 1.8
+        current_rvol = features['rvol'][-1]
+        is_high_volume = features['rvol'][-1] >= 1.8
+        is_absorption = is_high_effort_low_result(features['effort'][-1], features['result'][-1])
     """
     n = len(bars)
 
@@ -227,8 +332,11 @@ def calculate_features(bars: List[Bar],
         # 数据不足时使用简单波幅
         atr = highs - lows
 
-    # 计算成交量比率
-    volume_ratio = calculate_volume_ratio(bars, volume_period)
+    # 计算 RVOL（相对成交量）
+    rvol = calculate_rvol(bars, volume_period)
+
+    # 计算 Effort vs Result（VSA 核心）
+    effort, result = calculate_effort_result(bars, rvol, atr)
 
     # 计算影线比率
     wick_up = np.zeros(n)
@@ -244,7 +352,10 @@ def calculate_features(bars: List[Bar],
 
     return {
         'atr': atr,
-        'volume_ratio': volume_ratio,
+        'rvol': rvol,
+        'volume_ratio': rvol,  # 向后兼容别名
+        'effort': effort,
+        'result': result,
         'wick_up': wick_up,
         'wick_low': wick_low,
         'up_eff': up_eff,
@@ -254,3 +365,30 @@ def calculate_features(bars: List[Bar],
         'low': lows,
         'volume': volumes,
     }
+
+
+def get_volume_quality(rvol: np.ndarray, min_valid_ratio: float = 0.7) -> str:
+    """
+    评估成交量数据质量
+
+    参数:
+        rvol: RVOL 数组
+        min_valid_ratio: 有效数据的最小比例
+
+    返回:
+        'reliable': 数据可靠（>= 70% 有效）
+        'partial': 数据部分可用（50-70% 有效）
+        'unavailable': 数据不可用（< 50% 有效）
+    """
+    if len(rvol) == 0:
+        return "unavailable"
+
+    valid_count = np.sum(~np.isnan(rvol))
+    valid_ratio = valid_count / len(rvol)
+
+    if valid_ratio >= min_valid_ratio:
+        return "reliable"
+    elif valid_ratio >= 0.5:
+        return "partial"
+    else:
+        return "unavailable"

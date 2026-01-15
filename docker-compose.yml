@@ -16,16 +16,26 @@ services:
     ports:
       - "${API_PORT:-8000}:8000"
     environment:
-      - PROVIDER=${PROVIDER:-yfinance}
+      - PROVIDER=${PROVIDER:-twelvedata}
       - CACHE_TTL=${CACHE_TTL:-60}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - CORS_ORIGINS=http://localhost:3000,http://localhost:${WEB_PORT:-3000}
       # Provider API Keys（根据 PROVIDER 设置使用）
-      # Alpaca（推荐，免费 + 分钟成交量）
+      # Twelve Data（推荐，实时数据 + 可靠分钟成交量）
+      - TWELVEDATA_API_KEY=${TWELVEDATA_API_KEY:-}
+      # Alpaca（备选，免费 + 分钟成交量）
       - ALPACA_API_KEY=${ALPACA_API_KEY:-}
       - ALPACA_API_SECRET=${ALPACA_API_SECRET:-}
       # Alpha Vantage（25次/天）
       - ALPHAVANTAGE_API_KEY=${ALPHAVANTAGE_API_KEY:-}
+      # LLM 配置（用于生成 AI 叙事报告）
+      # openai: 使用 OpenAI API（支持兼容 API）
+      # gemini: 使用 Google Gemini API
+      - LLM_PROVIDER=${LLM_PROVIDER:-openai}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_MODEL=${LLM_MODEL:-}
+      - LLM_MODEL_FULL=${LLM_MODEL_FULL:-}
+      - LLM_BASE_URL=${LLM_BASE_URL:-}
     volumes:
       # 开发模式：挂载源代码实现热重载
       - ./apps/api/src:/app/src:ro

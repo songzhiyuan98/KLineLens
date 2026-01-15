@@ -29,6 +29,8 @@ from pydantic import BaseModel
 from .config import settings
 from .cache import get_cache, cache_key
 from .providers import get_provider, TickerNotFoundError, RateLimitError, ProviderError
+from .services.llm_service import LLMService, generate_narrative, prepare_analysis_for_llm
+from .database import SignalEvaluationDB, SignalEvaluation, generate_eval_id
 
 # 导入 core 模块
 # 支持两种环境：
@@ -111,7 +113,9 @@ app.add_middleware(
 # - alphavantage: 25次/天限制
 def _get_provider_api_key():
     """根据 provider 类型获取对应的 API 凭证"""
-    if settings.provider == "alpaca":
+    if settings.provider == "twelvedata":
+        return settings.twelvedata_api_key, None
+    elif settings.provider == "alpaca":
         return settings.alpaca_api_key, settings.alpaca_api_secret
     elif settings.provider == "alphavantage":
         return settings.alphavantage_api_key, None
@@ -126,6 +130,23 @@ provider = get_provider(
 logger.info(f"使用数据提供者: {provider.name}")
 cache = get_cache(default_ttl=settings.cache_ttl)
 
+# 初始化 Signal Evaluation 数据库
+eval_db = SignalEvaluationDB()
+logger.info(f"Signal Evaluation DB 初始化完成: {eval_db.db_path}")
+
+# 初始化 LLM 服务（用于生成叙事报告）
+llm_service = LLMService(
+    provider=settings.llm_provider,
+    api_key=settings.llm_api_key,
+    model=settings.llm_model or "",
+    model_full=settings.llm_model_full or "",
+    base_url=settings.llm_base_url or None,
+)
+if settings.llm_api_key:
+    logger.info(f"LLM 服务已配置: {settings.llm_provider}")
+else:
+    logger.warning("LLM API Key 未配置，叙事生成功能不可用")
+
 
 # ============ 辅助函数 ============
 
@@ -138,7 +159,14 @@ def report_to_dict(report: AnalysisReport) -> dict:
     def serialize(obj):
         """递归序列化对象"""
         if isinstance(obj, datetime):
-            return obj.isoformat() + "Z"
+            # 处理时区信息：如果是 timezone-aware，转换为 UTC 并使用 Z 后缀
+            if obj.tzinfo is not None:
+                # 转换为 UTC 字符串，去掉 +00:00，用 Z 代替
+                utc_str = obj.strftime('%Y-%m-%dT%H:%M:%S')
+                return utc_str + "Z"
+            else:
+                # naive datetime，直接添加 Z
+                return obj.isoformat() + "Z"
         elif hasattr(obj, '__dataclass_fields__'):
             return {k: serialize(v) for k, v in asdict(obj).items()}
         elif isinstance(obj, dict):
@@ -185,6 +213,55 @@ class AnalyzeRequest(BaseModel):
     ticker: str  # 股票代码
     tf: str = "1m"  # 时间周期，默认 1 分钟
     window: Optional[str] = None  # 回溯时间范围
+
+
+class NarrativeRequest(BaseModel):
+    """
+    叙事生成请求模型 v2
+
+    用于 POST /v1/narrative 接口的请求体。
+
+    report_type 选项:
+    - full: 完整 5m 结构分析报告（使用 gpt-4o）
+    - quick: 简短更新（2-4 句，使用 gpt-4o-mini）
+    - confirmation: 1m 执行确认（确认/否定高级别论点）
+    - context: 1D 背景框架（大结构上下文）
+    """
+    ticker: str  # 股票代码
+    tf: str = "5m"  # 时间周期（默认 5m）
+    window: Optional[str] = None  # 回溯时间范围
+    report_type: str = "full"  # full / quick / confirmation / context
+    lang: str = "zh"  # 输出语言 (zh / en)
+
+
+class SignalEvaluationRequest(BaseModel):
+    """
+    信号评估创建请求模型
+
+    用于 POST /v1/signal-evaluation 接口的请求体。
+    """
+    ticker: str  # 股票代码
+    tf: str  # 时间周期: 1m, 5m, 1d
+    signal_type: str  # 信号类型
+    direction: str  # up / down
+    predicted_behavior: str  # 预测行为
+    entry_price: float  # 入场价
+    target_price: float  # 目标价
+    invalidation_price: float  # 止损价
+    confidence: float  # 置信度 0-1
+    notes: Optional[str] = None  # 备注
+
+
+class SignalEvaluationUpdateRequest(BaseModel):
+    """
+    信号评估更新请求模型
+
+    用于 PUT /v1/signal-evaluation/{id} 接口的请求体。
+    """
+    status: str  # correct / incorrect
+    result: str  # target_hit / invalidation_hit / partial_correct / direction_wrong / timeout
+    actual_outcome: str  # 实际结果描述
+    evaluation_notes: Optional[str] = None  # 评估备注
 
 
 # ============ API 接口 ============
@@ -390,4 +467,440 @@ async def analyze(request: AnalyzeRequest):
         raise HTTPException(
             status_code=502,
             detail={"code": "PROVIDER_ERROR", "message": str(e)}
+        )
+
+
+@app.post("/v1/narrative")
+async def narrative(request: NarrativeRequest):
+    """
+    生成市场叙事报告 v2
+
+    使用 LLM 基于分析结果生成人类可读的市场解读。
+    基于事件驱动架构，支持多周期分析策略。
+
+    report_type 模式:
+    - full: 完整 5m 结构分析（用于手动刷新，gpt-4o）
+    - quick: 简短更新（2-4 句，事件触发，gpt-4o-mini）
+    - confirmation: 1m 执行确认（确认/否定 5m 论点）
+    - context: 1D 背景框架（大结构上下文）
+
+    参数:
+        ticker: 股票代码
+        tf: 时间周期 (1m, 5m, 1d)
+        window: 回溯时间（可选）
+        report_type: full / quick / confirmation / context
+        lang: 输出语言 (zh / en)
+
+    返回:
+        包含 summary, action, content, why, risks, quality, report_type 的叙事报告
+
+    错误:
+        400: 参数无效或分析错误
+        404: 股票代码不存在
+        429: 请求频率超限
+        502: 提供者或 LLM 错误
+        503: LLM 服务不可用
+    """
+    # 验证参数
+    if request.tf not in ("1m", "5m", "1d"):
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "TIMEFRAME_INVALID", "message": f"无效的时间周期: {request.tf}"}
+        )
+
+    valid_report_types = ("full", "quick", "confirmation", "context")
+    if request.report_type not in valid_report_types:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "REPORT_TYPE_INVALID", "message": f"无效的报告类型: {request.report_type}"}
+        )
+
+    if request.lang not in ("zh", "en"):
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "LANG_INVALID", "message": f"无效的语言: {request.lang}"}
+        )
+
+    # 检查 LLM 服务是否可用
+    if not settings.llm_api_key:
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "LLM_NOT_CONFIGURED", "message": "LLM API Key 未配置"}
+        )
+
+    # 获取默认回溯时间
+    actual_window = request.window or provider.get_default_window(request.tf)
+
+    # 复用分析逻辑获取数据和报告
+    key = cache_key(request.ticker, request.tf, actual_window)
+    cached_bars = cache.get(key)
+
+    try:
+        if cached_bars is not None:
+            logger.info(f"叙事: 缓存命中 {request.ticker}")
+            from dateutil.parser import isoparse
+            core_bars = [
+                CoreBar(
+                    t=isoparse(bar["t"].replace("Z", "+00:00")),
+                    o=bar["o"],
+                    h=bar["h"],
+                    l=bar["l"],
+                    c=bar["c"],
+                    v=bar["v"]
+                )
+                for bar in cached_bars
+            ]
+        else:
+            logger.info(f"叙事: 获取数据 {request.ticker}")
+            api_bars = provider.get_bars(request.ticker, request.tf, actual_window)
+            bars_data = [bar.to_dict() for bar in api_bars]
+            cache.set(key, bars_data)
+            core_bars = [
+                CoreBar(t=bar.t, o=bar.o, h=bar.h, l=bar.l, c=bar.c, v=bar.v)
+                for bar in api_bars
+            ]
+
+        # 运行市场分析
+        report = analyze_market(
+            bars=core_bars,
+            ticker=request.ticker,
+            timeframe=request.tf
+        )
+
+        # 获取当前价格（最后一根 K 线的收盘价）
+        current_price = core_bars[-1].c if core_bars else 0
+
+        # 转换报告为字典
+        report_dict = report_to_dict(report)
+
+        # 准备 LLM 输入数据（结构化 JSON，不发送原始 OHLCV）
+        analysis_json = prepare_analysis_for_llm(
+            report=report_dict,
+            ticker=request.ticker,
+            timeframe=request.tf,
+            price=current_price,
+            include_evidence=True
+        )
+
+        # 生成叙事
+        result = await llm_service.generate_analysis(
+            analysis_json=analysis_json,
+            timeframe=request.tf,
+            report_type=request.report_type,
+            lang=request.lang,
+        )
+
+        # 返回结果
+        return {
+            "ticker": request.ticker,
+            "timeframe": request.tf,
+            "report_type": result.report_type,
+            "lang": request.lang,
+            "narrative": {
+                "summary": result.summary,
+                "action": result.action,
+                "content": result.content,  # 完整格式化内容
+                "why": result.why,
+                "risks": result.risks,
+                "quality": result.quality,
+                "triggered_by": result.triggered_by,
+            },
+            "error": result.error,
+        }
+
+    except TickerNotFoundError as e:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "NO_DATA", "message": str(e)}
+        )
+    except RateLimitError as e:
+        raise HTTPException(
+            status_code=429,
+            detail={"code": "PROVIDER_RATE_LIMITED", "message": str(e)}
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "ANALYSIS_ERROR", "message": str(e)}
+        )
+    except ProviderError as e:
+        raise HTTPException(
+            status_code=502,
+            detail={"code": "PROVIDER_ERROR", "message": str(e)}
+        )
+
+
+# ============ Signal Evaluation API ============
+
+@app.post("/v1/signal-evaluation", status_code=201)
+async def create_signal_evaluation(request: SignalEvaluationRequest):
+    """
+    创建信号评估记录
+
+    记录一个新的信号预测，用于后续评估。
+
+    参数:
+        ticker: 股票代码
+        tf: 时间周期 (1m, 5m, 1d)
+        signal_type: 信号类型 (breakout_confirmed, fakeout, etc.)
+        direction: up / down
+        predicted_behavior: 预测行为
+        entry_price: 入场价
+        target_price: 目标价
+        invalidation_price: 止损价
+        confidence: 置信度 (0-1)
+        notes: 备注 (可选)
+
+    返回:
+        创建的评估记录
+    """
+    # 验证参数
+    if request.tf not in ("1m", "5m", "1d"):
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "TIMEFRAME_INVALID", "message": f"无效的时间周期: {request.tf}"}
+        )
+
+    if request.direction not in ("up", "down"):
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "DIRECTION_INVALID", "message": f"无效的方向: {request.direction}"}
+        )
+
+    if not 0 <= request.confidence <= 1:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "CONFIDENCE_INVALID", "message": "置信度必须在 0-1 之间"}
+        )
+
+    # 创建评估记录
+    evaluation = SignalEvaluation(
+        id=generate_eval_id(),
+        ticker=request.ticker.upper(),
+        tf=request.tf,
+        created_at=datetime.utcnow().isoformat() + "Z",
+        signal_type=request.signal_type,
+        direction=request.direction,
+        predicted_behavior=request.predicted_behavior,
+        entry_price=request.entry_price,
+        target_price=request.target_price,
+        invalidation_price=request.invalidation_price,
+        confidence=request.confidence,
+        notes=request.notes,
+        status="pending",
+    )
+
+    try:
+        created = eval_db.create(evaluation)
+        return {
+            "id": created.id,
+            "ticker": created.ticker,
+            "tf": created.tf,
+            "created_at": created.created_at,
+            "signal_type": created.signal_type,
+            "direction": created.direction,
+            "predicted_behavior": created.predicted_behavior,
+            "entry_price": created.entry_price,
+            "target_price": created.target_price,
+            "invalidation_price": created.invalidation_price,
+            "confidence": created.confidence,
+            "notes": created.notes,
+            "status": created.status,
+            "result": created.result,
+            "actual_outcome": created.actual_outcome,
+            "evaluation_notes": created.evaluation_notes,
+            "evaluated_at": created.evaluated_at,
+        }
+    except Exception as e:
+        logger.error(f"创建评估记录失败: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={"code": "DB_ERROR", "message": "数据库错误"}
+        )
+
+
+@app.get("/v1/signal-evaluations")
+async def list_signal_evaluations(
+    ticker: str = Query(..., description="股票代码"),
+    tf: Optional[str] = Query(None, description="时间周期过滤: 1m, 5m, 1d"),
+    status: Optional[str] = Query(None, description="状态过滤: pending, correct, incorrect"),
+    limit: int = Query(50, ge=1, le=200, description="返回数量限制"),
+    offset: int = Query(0, ge=0, description="分页偏移"),
+):
+    """
+    获取信号评估历史记录
+
+    返回指定股票的评估记录列表和统计信息。
+
+    参数:
+        ticker: 股票代码 (必需)
+        tf: 时间周期过滤 (可选)
+        status: 状态过滤 (可选)
+        limit: 返回数量限制 (默认 50)
+        offset: 分页偏移 (默认 0)
+
+    返回:
+        评估记录列表和统计信息
+    """
+    # 验证参数
+    if tf and tf not in ("1m", "5m", "1d"):
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "TIMEFRAME_INVALID", "message": f"无效的时间周期: {tf}"}
+        )
+
+    if status and status not in ("pending", "correct", "incorrect"):
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "STATUS_INVALID", "message": f"无效的状态: {status}"}
+        )
+
+    try:
+        # 获取记录列表
+        records = eval_db.list(
+            ticker=ticker.upper(),
+            tf=tf,
+            status=status,
+            limit=limit,
+            offset=offset
+        )
+
+        # 获取总数
+        total = eval_db.count(ticker=ticker.upper(), tf=tf, status=status)
+
+        # 获取统计信息
+        statistics = eval_db.get_statistics(ticker=ticker.upper(), tf=tf)
+
+        return {
+            "ticker": ticker.upper(),
+            "total": total,
+            "records": [
+                {
+                    "id": r.id,
+                    "ticker": r.ticker,
+                    "tf": r.tf,
+                    "created_at": r.created_at,
+                    "signal_type": r.signal_type,
+                    "direction": r.direction,
+                    "predicted_behavior": r.predicted_behavior,
+                    "entry_price": r.entry_price,
+                    "target_price": r.target_price,
+                    "invalidation_price": r.invalidation_price,
+                    "confidence": r.confidence,
+                    "notes": r.notes,
+                    "status": r.status,
+                    "result": r.result,
+                    "actual_outcome": r.actual_outcome,
+                    "evaluation_notes": r.evaluation_notes,
+                    "evaluated_at": r.evaluated_at,
+                }
+                for r in records
+            ],
+            "statistics": {
+                "total_predictions": statistics.total_predictions,
+                "correct": statistics.correct,
+                "incorrect": statistics.incorrect,
+                "pending": statistics.pending,
+                "accuracy_rate": statistics.accuracy_rate,
+                "by_signal_type": statistics.by_signal_type,
+            }
+        }
+    except Exception as e:
+        logger.error(f"获取评估记录失败: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={"code": "DB_ERROR", "message": "数据库错误"}
+        )
+
+
+@app.put("/v1/signal-evaluation/{eval_id}")
+async def update_signal_evaluation(eval_id: str, request: SignalEvaluationUpdateRequest):
+    """
+    更新信号评估结果
+
+    更新预测的最终结果。
+
+    参数:
+        eval_id: 评估记录 ID
+        status: correct / incorrect
+        result: 结果类型 (target_hit, invalidation_hit, partial_correct, direction_wrong, timeout)
+        actual_outcome: 实际发生的情况
+        evaluation_notes: 评估备注 (可选)
+
+    返回:
+        更新后的评估记录
+    """
+    # 验证参数
+    if request.status not in ("correct", "incorrect"):
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "STATUS_INVALID", "message": f"无效的状态: {request.status}"}
+        )
+
+    valid_results = ("target_hit", "invalidation_hit", "partial_correct", "direction_wrong", "timeout")
+    if request.result not in valid_results:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "RESULT_INVALID", "message": f"无效的结果类型: {request.result}"}
+        )
+
+    try:
+        updated = eval_db.update(
+            eval_id=eval_id,
+            status=request.status,
+            result=request.result,
+            actual_outcome=request.actual_outcome,
+            evaluation_notes=request.evaluation_notes
+        )
+
+        if updated is None:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "NOT_FOUND", "message": f"评估记录不存在: {eval_id}"}
+            )
+
+        return {
+            "id": updated.id,
+            "status": updated.status,
+            "result": updated.result,
+            "actual_outcome": updated.actual_outcome,
+            "evaluation_notes": updated.evaluation_notes,
+            "evaluated_at": updated.evaluated_at,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"更新评估记录失败: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={"code": "DB_ERROR", "message": "数据库错误"}
+        )
+
+
+@app.delete("/v1/signal-evaluation/{eval_id}")
+async def delete_signal_evaluation(eval_id: str):
+    """
+    删除信号评估记录
+
+    参数:
+        eval_id: 评估记录 ID
+
+    返回:
+        删除确认
+    """
+    try:
+        deleted = eval_db.delete(eval_id)
+        if not deleted:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "NOT_FOUND", "message": f"评估记录不存在: {eval_id}"}
+            )
+        return {"deleted": True, "id": eval_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"删除评估记录失败: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={"code": "DB_ERROR", "message": "数据库错误"}
         )

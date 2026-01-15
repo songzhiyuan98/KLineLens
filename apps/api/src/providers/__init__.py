@@ -2,8 +2,9 @@
 数据提供者模块
 
 本模块提供市场数据获取的抽象层，支持多种数据源：
+- TwelveDataProvider: 使用 Twelve Data 获取高质量实时数据（推荐，有可靠分钟成交量）
 - YFinanceProvider: 使用 Yahoo Finance 获取免费数据（默认，无需 API Key）
-- AlpacaProvider: 使用 Alpaca IEX 获取免费数据（推荐，有分钟成交量）
+- AlpacaProvider: 使用 Alpaca IEX 获取免费数据（有分钟成交量）
 - AlphaVantageProvider: 使用 Alpha Vantage 获取数据（25次/天限制）
 
 主要导出:
@@ -19,6 +20,7 @@ from .base import MarketDataProvider, Bar, ProviderError, TickerNotFoundError, R
 from .yfinance_provider import YFinanceProvider
 from .alphavantage_provider import AlphaVantageProvider
 from .alpaca_provider import AlpacaProvider
+from .twelvedata_provider import TwelveDataProvider
 
 
 def get_provider(
@@ -42,6 +44,8 @@ def get_provider(
         ProviderError: 提供者初始化失败（如缺少 API Key）
     """
     providers = {
+        "twelvedata": lambda: TwelveDataProvider(api_key=api_key or ""),
+        "twelve_data": lambda: TwelveDataProvider(api_key=api_key or ""),  # 别名
         "yfinance": lambda: YFinanceProvider(),
         "yahoo": lambda: YFinanceProvider(),  # 别名
         "alpaca": lambda: AlpacaProvider(api_key=api_key or "", api_secret=api_secret or ""),
@@ -63,6 +67,7 @@ __all__ = [
     "ProviderError",
     "TickerNotFoundError",
     "RateLimitError",
+    "TwelveDataProvider",
     "YFinanceProvider",
     "AlpacaProvider",
     "AlphaVantageProvider",

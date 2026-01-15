@@ -9,6 +9,7 @@ import {
   createChart,
   IChartApi,
   ISeriesApi,
+  IPriceLine,
   CandlestickData,
   HistogramData,
   LineData,
@@ -26,6 +27,8 @@ interface CandlestickChartProps {
   volumeMaPeriod?: number;
   highlightedBarTime?: string | null;
   onClearHighlight?: () => void;
+  currentPrice?: number;  // For calculating R1/R2/S1/S2
+  timeframe?: string;  // For smart default visible range
 }
 
 // 计算 Volume MA
@@ -67,12 +70,15 @@ export default function CandlestickChart({
   volumeMaPeriod = 30,
   highlightedBarTime = null,
   onClearHighlight,
+  currentPrice,
+  timeframe = '5m',
 }: CandlestickChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
   const volumeMaSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const priceLinesRef = useRef<IPriceLine[]>([]);
   const [chartReady, setChartReady] = useState(false);
 
   // 计算 volume MA
@@ -116,6 +122,9 @@ export default function CandlestickChart({
   useEffect(() => {
     if (!containerRef.current) return;
 
+    // 获取本地时区偏移（分钟）
+    const timezoneOffset = new Date().getTimezoneOffset();
+
     const chart = createChart(containerRef.current, {
       width: containerRef.current.clientWidth,
       height,
@@ -137,6 +146,18 @@ export default function CandlestickChart({
         borderColor: colors.border,
         timeVisible: true,
         secondsVisible: false,
+      },
+      localization: {
+        locale: 'en-US',
+        // 自定义时间格式化，显示本地时间
+        timeFormatter: (time: number) => {
+          const date = new Date(time * 1000);
+          const hours = date.getHours().toString().padStart(2, '0');
+          const minutes = date.getMinutes().toString().padStart(2, '0');
+          return `${hours}:${minutes}`;
+        },
+        // 使用英文日期格式
+        dateFormat: 'MMM dd',
       },
     });
 
@@ -207,9 +228,19 @@ export default function CandlestickChart({
   useEffect(() => {
     if (!chartReady || !candleSeriesRef.current || !volumeSeriesRef.current || !volumeMaSeriesRef.current) return;
 
+    // 将 UTC 时间转换为本地时间戳（lightweight-charts 需要）
+    // 通过添加时区偏移来显示本地时间
+    const toLocalTimestamp = (isoString: string): Time => {
+      const date = new Date(isoString);
+      // 获取时区偏移（分钟），转换为秒
+      const offsetSeconds = date.getTimezoneOffset() * 60;
+      // 返回调整后的时间戳（让图表显示本地时间）
+      return (date.getTime() / 1000 - offsetSeconds) as Time;
+    };
+
     // K 线数据
     const candleData: CandlestickData[] = bars.map((bar) => ({
-      time: (new Date(bar.t).getTime() / 1000) as Time,
+      time: toLocalTimestamp(bar.t),
       open: bar.o,
       high: bar.h,
       low: bar.l,
@@ -218,14 +249,14 @@ export default function CandlestickChart({
 
     // 成交量数据
     const volumeData: HistogramData[] = bars.map((bar) => ({
-      time: (new Date(bar.t).getTime() / 1000) as Time,
+      time: toLocalTimestamp(bar.t),
       value: bar.v,
       color: bar.c >= bar.o ? colors.upAlpha : colors.downAlpha,
     }));
 
     // Volume MA 数据
     const volumeMaData: LineData[] = bars.map((bar, i) => ({
-      time: (new Date(bar.t).getTime() / 1000) as Time,
+      time: toLocalTimestamp(bar.t),
       value: volumeMA[i],
     })).filter(d => d.value > 0);
 
@@ -233,92 +264,119 @@ export default function CandlestickChart({
     volumeSeriesRef.current.setData(volumeData);
     volumeMaSeriesRef.current.setData(volumeMaData);
 
-    chartRef.current?.timeScale().fitContent();
-  }, [bars, chartReady, volumeMA]);
+    // Smart default visible range based on timeframe
+    // 1m: ~120 bars (2 hours) - execution level
+    // 5m: ~78 bars (1 trading day) - structure level
+    // 1d: ~20 bars (1 month) - trend level
+    const defaultVisibleBars: Record<string, number> = {
+      '1m': 120,
+      '5m': 78,
+      '1d': 20,
+    };
+    const visibleBars = defaultVisibleBars[timeframe] || 78;
+    const totalBars = bars.length;
 
-  // 绘制区域 - 只显示 Top 3 zones，更subtle的样式
+    if (totalBars > 0 && chartRef.current) {
+      // Show the most recent N bars with some padding on the right
+      const from = Math.max(0, totalBars - visibleBars);
+      const to = totalBars + 5; // Add padding for right margin
+      chartRef.current.timeScale().setVisibleLogicalRange({ from, to });
+    }
+  }, [bars, chartReady, volumeMA, timeframe]);
+
+  // 绘制区域 - 交易模式：只显示 R1/R2/S1/S2（最多4条线）
   useEffect(() => {
     if (!chartReady || !candleSeriesRef.current) return;
 
     const series = candleSeriesRef.current;
 
-    // 只取 Top 3 支撑区域（按 strength 排序）
-    const topSupport = [...supportZones]
-      .sort((a, b) => (b.strength || 0) - (a.strength || 0))
-      .slice(0, 3);
-
-    // 只取 Top 3 阻力区域（按 strength 排序）
-    const topResistance = [...resistanceZones]
-      .sort((a, b) => (b.strength || 0) - (a.strength || 0))
-      .slice(0, 3);
-
-    // 支撑区域 - 使用中线 + 更subtle的样式
-    topSupport.forEach((zone, index) => {
-      const midPrice = (zone.low + zone.high) / 2;
-      const opacity = index === 0 ? 1 : 0.6; // 最强的 zone 更明显
-
-      // 区域上下边界 - 更淡
-      series.createPriceLine({
-        price: zone.low,
-        color: colors.supportZone,
-        lineWidth: 1,
-        lineStyle: 2,
-        axisLabelVisible: false,
-      });
-      series.createPriceLine({
-        price: zone.high,
-        color: colors.supportZone,
-        lineWidth: 1,
-        lineStyle: 2,
-        axisLabelVisible: false,
-      });
-      // 区域中线 - 稍强
-      series.createPriceLine({
-        price: midPrice,
-        color: colors.supportZoneLine,
-        lineWidth: index === 0 ? 2 : 1,
-        lineStyle: 0,
-        axisLabelVisible: index === 0,
-        title: index === 0 ? 'S' : '',
-      });
+    // 清除旧的价格线
+    priceLinesRef.current.forEach(line => {
+      series.removePriceLine(line);
     });
+    priceLinesRef.current = [];
 
-    // 阻力区域 - 使用中线 + 更subtle的样式
-    topResistance.forEach((zone, index) => {
-      const midPrice = (zone.low + zone.high) / 2;
+    const price = currentPrice || (bars.length > 0 ? bars[bars.length - 1].c : 0);
 
-      // 区域上下边界 - 更淡
-      series.createPriceLine({
-        price: zone.low,
-        color: colors.resistanceZone,
-        lineWidth: 1,
-        lineStyle: 2,
-        axisLabelVisible: false,
-      });
-      series.createPriceLine({
-        price: zone.high,
-        color: colors.resistanceZone,
-        lineWidth: 1,
-        lineStyle: 2,
-        axisLabelVisible: false,
-      });
-      // 区域中线 - 稍强
-      series.createPriceLine({
-        price: midPrice,
+    // 按距离当前价排序，找到 R1/R2（上方最近两个）和 S1/S2（下方最近两个）
+    const resistanceByDistance = [...resistanceZones]
+      .filter(z => (z.low + z.high) / 2 > price)
+      .sort((a, b) => ((a.low + a.high) / 2) - ((b.low + b.high) / 2));
+
+    const supportByDistance = [...supportZones]
+      .filter(z => (z.low + z.high) / 2 < price)
+      .sort((a, b) => ((b.low + b.high) / 2) - ((a.low + a.high) / 2));
+
+    const r1 = resistanceByDistance[0];
+    const r2 = resistanceByDistance[1];
+    const s1 = supportByDistance[0];
+    const s2 = supportByDistance[1];
+
+    // R1: 最近阻力（实线，加粗）
+    if (r1) {
+      const line = series.createPriceLine({
+        price: (r1.low + r1.high) / 2,
         color: colors.resistanceZoneLine,
-        lineWidth: index === 0 ? 2 : 1,
+        lineWidth: 2,
         lineStyle: 0,
-        axisLabelVisible: index === 0,
-        title: index === 0 ? 'R' : '',
+        axisLabelVisible: true,
+        title: 'R1',
       });
-    });
-  }, [supportZones, resistanceZones, chartReady, darkMode]);
+      priceLinesRef.current.push(line);
+    }
+
+    // R2: 次近阻力（虚线）
+    if (r2) {
+      const line = series.createPriceLine({
+        price: (r2.low + r2.high) / 2,
+        color: 'rgba(239, 83, 80, 0.4)',
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: 'R2',
+      });
+      priceLinesRef.current.push(line);
+    }
+
+    // S1: 最近支撑（实线，加粗）
+    if (s1) {
+      const line = series.createPriceLine({
+        price: (s1.low + s1.high) / 2,
+        color: colors.supportZoneLine,
+        lineWidth: 2,
+        lineStyle: 0,
+        axisLabelVisible: true,
+        title: 'S1',
+      });
+      priceLinesRef.current.push(line);
+    }
+
+    // S2: 次近支撑（虚线）
+    if (s2) {
+      const line = series.createPriceLine({
+        price: (s2.low + s2.high) / 2,
+        color: 'rgba(38, 166, 154, 0.4)',
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: 'S2',
+      });
+      priceLinesRef.current.push(line);
+    }
+  }, [supportZones, resistanceZones, chartReady, darkMode, currentPrice, bars]);
 
   // 高亮特定 bar (Evidence 定位)
   useEffect(() => {
     if (!chartReady || !candleSeriesRef.current || !chartRef.current) return;
 
     const series = candleSeriesRef.current;
+
+    // 本地时间戳转换函数
+    const toLocalTimestamp = (isoString: string): Time => {
+      const date = new Date(isoString);
+      const offsetSeconds = date.getTimezoneOffset() * 60;
+      return (date.getTime() / 1000 - offsetSeconds) as Time;
+    };
 
     if (highlightedBarTime) {
       const targetTime = new Date(highlightedBarTime).getTime() / 1000;
@@ -328,10 +386,10 @@ export default function CandlestickChart({
       });
 
       if (targetBar) {
-        // 设置 marker
+        // 设置 marker（使用本地时间戳）
         series.setMarkers([
           {
-            time: (new Date(targetBar.t).getTime() / 1000) as Time,
+            time: toLocalTimestamp(targetBar.t),
             position: 'aboveBar',
             color: '#ffa726',
             shape: 'arrowDown',

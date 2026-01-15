@@ -8,6 +8,105 @@ N/A
 
 ---
 
+## [0.6.0] - 2026-01-14
+
+### Added
+- **v4 Terminal UI** - Professional Bloomberg-style design:
+  - **Status Strip**: Smaller font, Volume indicator as colored dot
+  - **Decision Line**: Bloomberg-style Action/Trigger/Risk display in Summary
+    - Action: WAIT / WATCH / CONFIRM / AVOID
+    - Trigger: Specific condition description
+    - Risk: Low confidence warning (optional)
+  - **Zone Hierarchy**: Top1 solid line + label, Top2 dashed, Top3+ dotted lighter
+  - **ATR Distance**: Key Zones table shows ATR distance (hover for %)
+  - **Short TF Warnings**: 1m/5m timeframes show noise warning badges
+    - Behavior: "短周期噪音较高" / "Short TF high noise"
+    - Playbook: "ENTRY" badge indicating entry-only use
+  - **low conf Tooltip**: Hover explanation for low confidence
+
+### Changed
+- **Section Titles**: Smaller (0.5rem), lighter gray (#b0b0b0), tighter spacing
+- **Section Dividers**: More subtle (1px rgba(0,0,0,0.04))
+- **Status Strip**: Smaller font (0.5625rem), lighter colors (#b0b0b0/#888888)
+- **i18n**: Full Chinese support for all new UI elements
+  - Decision Line labels (Action/Trigger/Risk)
+  - 3-Factor breakout labels (收盘确认 ×2, etc.)
+  - Zone types (阻/支)
+  - Noise warnings
+
+### Technical
+- `CandlestickChart.tsx`: Zone rendering now hierarchical (Top1/Top2/Top3+ different styles)
+- `[ticker].tsx`: Added `estimatedATR` calculation, `getDecisionLine()` function
+- `i18n.tsx`: Added 20+ new translation keys for v4 UI
+
+---
+
+## [0.5.0] - 2026-01-14
+
+### Added
+- **TwelveData Provider** (Recommended):
+  - Real-time market data with ~170ms latency
+  - Reliable 1-minute volume data
+  - Free tier: 800 credits/day, 8 requests/minute
+  - Global market coverage (US, crypto, forex)
+  - `apps/api/src/providers/twelvedata_provider.py`
+
+- **Core Engine Enhancements** (`packages/core/src/`):
+  - `features.py`:
+    - `calculate_rvol()` - Relative Volume (volume / MA30)
+    - `calculate_effort_result()` - VSA Effort vs Result
+    - `get_volume_quality()` - Volume data quality assessment (reliable/partial/unavailable)
+  - `structure.py`:
+    - Zone Strength 多维评分: `(0.3×tests) + (0.3×rejections) + (0.25×reaction) + (0.15×recency)`
+    - 3-Factor Breakout FSM: Structure (2 closes) + Volume (RVOL ≥ 1.8) + Result (≥ 0.6 ATR)
+  - `behavior.py`:
+    - VSA Absorption detection (High Effort + Low Result)
+    - Evidence types: VOLUME_SPIKE, REJECTION, SWEEP, ABSORPTION, BREAKOUT
+    - Evidence severity levels: low, med, high
+  - `timeline.py`:
+    - Soft Events: zone_approached, zone_tested, zone_rejected, zone_accepted
+    - Wyckoff Events: spring, upthrust
+    - VSA Events: absorption_clue, volume_spike, volume_dryup
+  - `models.py`:
+    - Zone: added `rejections`, `last_reaction`, `last_test_time`
+    - Signal: added `bar_index`, `volume_quality`
+    - Evidence: added `type`, `severity`, `bar_index`, VSA metrics
+    - TimelineEvent: added `bar_index`, `severity`
+    - AnalysisReport: added `volume_quality`
+  - `analyze.py`:
+    - Integrated RVOL, Effort, Result into analysis pipeline
+    - Added `result_threshold` parameter (default 0.6)
+    - Volume quality assessment in final report
+
+### Changed
+- **ENGINE_SPEC.md** - Major algorithm specification update:
+  - Added RVOL (Relative Volume) with N/A fallback handling
+  - Added Effort vs Result (VSA core indicator) - 4 quadrant interpretation
+  - Enhanced Zone Strength scoring (tests, rejections, reaction magnitude, recency)
+  - Updated Breakout FSM with 3-factor confirmation (Structure + Volume + Result)
+  - Enhanced Evidence System with click-to-locate anchors (bar_index, type, severity)
+  - Added Soft Events to Timeline (zone_approached, zone_tested, spring, upthrust, absorption_clue, volume_spike/dryup)
+  - Added Multi-Timeframe Logic section (future enhancement)
+  - Added Algorithm Summary with product description (EN/CN)
+  - Added Key Terms appendix (RVOL, VSA, Wyckoff, FSM, Evidence, Effort, Result)
+- **API.md** - Schema enhancements:
+  - Added `volume_quality` field to AnalysisReport and Signal
+  - Enhanced Zone schema (rejections, last_reaction, last_test_time)
+  - Enhanced Signal schema (bar_index, volume_quality)
+  - Enhanced Evidence schema (type, severity, bar_index, effort/result metrics)
+  - Enhanced TimelineEvent schema (bar_index, severity)
+  - Added soft event types (zone_*, spring, upthrust, absorption_clue, volume_*)
+  - Added Volume Quality Handling section
+- **PROVIDER.md** - Updated for TwelveData:
+  - TwelveData as recommended provider
+  - Provider comparison table
+  - Volume quality impact on analysis
+  - Updated troubleshooting section
+- **docker-compose.yml** - Added TWELVEDATA_API_KEY environment variable
+- **config.py** - Default provider changed to TwelveData
+
+---
+
 ## [0.4.0] - 2026-01-14
 
 ### Added

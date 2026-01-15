@@ -1,8 +1,16 @@
 """
-KLineLens 主分析协调器
+KLineLens 主分析协调器（增强版）
 
 市场结构分析的主入口点。
 协调所有子模块生成完整的 AnalysisReport。
+
+增强功能:
+- RVOL (Relative Volume) 替代绝对成交量
+- VSA (Volume Spread Analysis): Effort vs Result
+- 3-Factor 突破确认: Structure + Volume + Result
+- Zone Strength 多维评分
+- 增强型 Evidence 和 Timeline Soft Events
+- Volume Quality 评估
 
 使用方法:
     from klinelens_core import analyze_market
@@ -17,7 +25,7 @@ from datetime import datetime, timezone
 import numpy as np
 
 from .models import Bar, AnalysisReport, MarketState, Signal
-from .features import calculate_features
+from .features import calculate_features, get_volume_quality
 from .structure import find_swing_points, cluster_zones, classify_regime, BreakoutFSM
 from .behavior import infer_behavior
 from .timeline import TimelineManager, TimelineState
@@ -27,22 +35,23 @@ from .playbook import generate_playbook
 @dataclass
 class AnalysisParams:
     """
-    分析参数配置
+    分析参数配置（增强版）
 
     所有参数都有合理的 MVP 默认值。
     """
     # 特征计算
     atr_period: int = 14           # ATR 周期
-    volume_period: int = 30        # 成交量均线周期
+    volume_period: int = 30        # 成交量均线周期（用于 RVOL）
 
     # 结构检测
     swing_n: int = 4               # 分形阶数
     regime_m: int = 6              # 趋势判断使用的摆动点数量
     max_zones: int = 5             # 每侧最大区域数
 
-    # 突破状态机
-    volume_threshold: float = 1.8  # 确认所需成交量比率
-    confirm_closes: int = 2        # 确认所需连续收盘次数
+    # 3-Factor 突破状态机
+    volume_threshold: float = 1.8  # Factor 2: 确认所需 RVOL
+    result_threshold: float = 0.6  # Factor 3: 确认所需 range/ATR
+    confirm_closes: int = 2        # Factor 1: 确认所需连续收盘次数
     fakeout_bars: int = 3          # 假突破判定窗口
 
     # 行为推断
@@ -83,6 +92,7 @@ def create_initial_state(params: Optional[AnalysisParams] = None) -> AnalysisSta
     return AnalysisState(
         breakout_fsm=BreakoutFSM(
             volume_threshold=params.volume_threshold,
+            result_threshold=params.result_threshold,
             confirm_closes=params.confirm_closes,
             fakeout_bars=params.fakeout_bars
         ),
@@ -142,7 +152,7 @@ def analyze_market(bars: List[Bar],
                    params: Optional[AnalysisParams] = None,
                    state: Optional[AnalysisState] = None) -> AnalysisReport:
     """
-    主市场分析函数
+    主市场分析函数（增强版）
 
     参数:
         bars: K 线列表（建议至少 50 根）
@@ -152,22 +162,23 @@ def analyze_market(bars: List[Bar],
         state: 先前分析状态（用于增量更新）
 
     返回:
-        完整的 AnalysisReport
+        完整的 AnalysisReport（含 volume_quality）
 
     异常:
         ValueError: 如果 K 线数量少于最低要求
 
-    实现流程:
+    增强版实现流程:
         1. 验证输入 K 线
-        2. 计算特征（ATR, 成交量比率, 影线, 效率）
-        3. 查找摆动点
-        4. 聚类区域
-        5. 分类趋势
-        6. 运行突破状态机获取信号
-        7. 推断行为
-        8. 更新时间线
-        9. 生成 Playbook
-        10. 组装并返回 AnalysisReport
+        2. 计算特征（ATR, RVOL, Effort, Result, 影线, 效率）
+        3. 评估成交量数据质量
+        4. 查找摆动点
+        5. 聚类区域（增强版 Zone Strength）
+        6. 分类趋势
+        7. 运行 3-Factor 突破状态机获取信号
+        8. 推断行为（含 VSA 吸收检测）
+        9. 更新时间线（含 Soft Events）
+        10. 生成 Playbook
+        11. 组装并返回 AnalysisReport
 
     确定性:
         相同的 bars 和 params，输出相同。
@@ -181,7 +192,7 @@ def analyze_market(bars: List[Bar],
     min_required = params.atr_period + 1
     _validate_bars(bars, min_required)
 
-    # 2. 计算特征
+    # 2. 计算特征（包含 RVOL, Effort, Result）
     features = calculate_features(
         bars,
         atr_period=params.atr_period,
@@ -194,40 +205,49 @@ def analyze_market(bars: List[Bar],
         # 如果 ATR 为 NaN，使用简单波幅
         current_atr = features['high'][-1] - features['low'][-1]
 
-    # 3. 查找摆动点
+    # 3. 评估成交量数据质量
+    volume_quality = get_volume_quality(features['rvol'])
+
+    # 4. 查找摆动点
     swing_highs, swing_lows = find_swing_points(bars, n=params.swing_n)
 
-    # 4. 聚类区域
+    # 5. 聚类区域（增强版：含 Zone Strength）
+    current_bar_index = len(bars) - 1
     zones = cluster_zones(
         swing_highs,
         swing_lows,
         current_atr,
         timeframe=timeframe,
-        max_zones=params.max_zones
+        max_zones=params.max_zones,
+        current_bar_index=current_bar_index
     )
 
-    # 5. 分类趋势
+    # 6. 分类趋势
     market_state = classify_regime(
         swing_highs,
         swing_lows,
         m=params.regime_m
     )
 
-    # 6. 运行突破状态机
+    # 7. 运行 3-Factor 突破状态机
     if state is None:
         state = create_initial_state(params)
 
     signals = []
     for i, bar in enumerate(bars):
-        vol_ratio = features['volume_ratio'][i]
-        if np.isnan(vol_ratio):
-            vol_ratio = 1.0
+        rvol = features['rvol'][i]
+        if np.isnan(rvol):
+            rvol = 1.0
 
-        signal = state.breakout_fsm.update(bar, i, zones, vol_ratio)
+        atr_i = features['atr'][i]
+        if np.isnan(atr_i):
+            atr_i = bar.h - bar.l
+
+        signal = state.breakout_fsm.update(bar, i, zones, rvol, atr_i)
         if signal:
             signals.append(signal)
 
-    # 7. 推断行为
+    # 8. 推断行为（含 VSA 吸收检测）
     behavior = infer_behavior(
         bars,
         features,
@@ -236,22 +256,92 @@ def analyze_market(bars: List[Bar],
         signals
     )
 
-    # 8. 更新时间线
+    # 9. 更新时间线（含 Soft Events）
     current_bar = bars[-1]
     breakout_state_str = state.breakout_fsm.get_state_str()
+
+    # 获取当前 RVOL, Effort, Result
+    current_rvol = features['rvol'][-1]
+    if np.isnan(current_rvol):
+        current_rvol = 1.0
+    current_effort = features['effort'][-1]
+    current_result = features['result'][-1]
+
+    # 转换摆动点为元组格式
+    swing_highs_tuples = [(sp.index, sp.price) for sp in swing_highs]
+    swing_lows_tuples = [(sp.index, sp.price) for sp in swing_lows]
 
     timeline_events = state.timeline_manager.update(
         timestamp=current_bar.t,
         market_state=market_state,
         behavior=behavior,
         breakout_state=breakout_state_str,
-        signals=signals
+        signals=signals,
+        bar=current_bar,
+        bar_idx=current_bar_index,
+        zones=zones,
+        atr=current_atr,
+        rvol=current_rvol,
+        effort=current_effort,
+        result=current_result,
+        swing_highs=swing_highs_tuples,
+        swing_lows=swing_lows_tuples
     )
 
-    # 获取完整时间线历史
+    # 生成历史软事件（扫描最近 N 根 K 线）
+    from .timeline import generate_soft_events
+    from .models import TimelineEvent
+
+    lookback = min(10, len(bars) - 1)
+    historical_events = []
+
+    for i in range(len(bars) - lookback, len(bars)):
+        bar = bars[i]
+        rvol_i = features['rvol'][i]
+        if np.isnan(rvol_i):
+            rvol_i = 1.0
+        effort_i = features['effort'][i]
+        result_i = features['result'][i]
+
+        soft_events = generate_soft_events(
+            bar=bar,
+            bar_idx=i,
+            zones=zones,
+            atr=current_atr,
+            rvol=rvol_i,
+            effort=effort_i,
+            result=result_i,
+            swing_highs=swing_highs_tuples,
+            swing_lows=swing_lows_tuples,
+            previous_state=None  # 无状态比较
+        )
+
+        for event_data in soft_events[:1]:  # 每根 K 线最多 1 个软事件
+            event_type, delta, reason, severity = event_data
+            historical_events.append(TimelineEvent(
+                ts=bar.t,
+                event_type=event_type,
+                delta=round(delta, 4) if isinstance(delta, float) else 0.0,
+                reason=reason,
+                bar_index=i,
+                severity=severity
+            ))
+
+    # 合并事件（硬事件优先，软事件补充）
     all_timeline_events = state.timeline_manager.get_events(limit=10)
 
-    # 9. 生成 Playbook
+    # 如果事件太少，用历史软事件补充
+    if len(all_timeline_events) < 5 and historical_events:
+        # 去重：只保留不同类型的事件
+        seen_types = set(e.event_type for e in all_timeline_events)
+        for he in reversed(historical_events[-5:]):
+            if he.event_type not in seen_types and len(all_timeline_events) < 8:
+                all_timeline_events.append(he)
+                seen_types.add(he.event_type)
+        # 按时间排序
+        all_timeline_events.sort(key=lambda e: e.ts, reverse=True)
+
+    # 10. 生成 Playbook
     current_price = features['close'][-1]
     playbook = generate_playbook(
         market_state,
@@ -261,16 +351,17 @@ def analyze_market(bars: List[Bar],
         current_price
     )
 
-    # 10. 检测数据缺口
+    # 11. 检测数据缺口
     data_gaps = _detect_data_gaps(bars, timeframe)
 
-    # 11. 组装报告
+    # 12. 组装报告
     report = AnalysisReport(
         ticker=ticker.upper(),
         tf=timeframe,
         generated_at=datetime.now(timezone.utc),
         bar_count=len(bars),
         data_gaps=data_gaps,
+        volume_quality=volume_quality,
         market_state=market_state,
         zones=zones,
         signals=signals,

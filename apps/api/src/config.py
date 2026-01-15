@@ -36,15 +36,26 @@ class Settings(BaseSettings):
     """
 
     # 数据提供者配置
-    # yfinance: 免费，无需 Key，分钟成交量有缺失
-    # alpaca: 免费，需要 Key，有分钟成交量（IEX 口径）- 推荐
+    # twelvedata: 推荐！实时数据，可靠分钟成交量，Free 800次/天
+    # yfinance: 免费，无需 Key，分钟成交量不可靠，15-20分钟延迟
+    # alpaca: 免费，需要 Key，有分钟成交量（IEX 口径）
     # alphavantage: 25次/天，需要 Key
-    provider: str = "yfinance"
+    provider: str = "twelvedata"  # 默认使用 Twelve Data
 
     # API Keys（根据选择的 provider 使用）
+    twelvedata_api_key: str = ""  # Twelve Data API Key（推荐）
     alpaca_api_key: str = ""  # Alpaca API Key
     alpaca_api_secret: str = ""  # Alpaca API Secret
     alphavantage_api_key: str = ""  # Alpha Vantage API Key
+
+    # LLM 配置（用于生成叙事报告）
+    # openai: 使用 OpenAI API（支持兼容 API）
+    # gemini: 使用 Google Gemini API
+    llm_provider: str = "openai"  # openai 或 gemini
+    llm_api_key: str = ""  # LLM API Key
+    llm_model: str = ""  # 短评模型（留空使用默认: gpt-4o-mini）
+    llm_model_full: str = ""  # 完整报告模型（留空使用默认: gpt-4o）
+    llm_base_url: str = ""  # OpenAI 兼容 API 的 base URL（可选）
 
     # 缓存配置
     cache_type: str = "memory"  # memory 或 redis

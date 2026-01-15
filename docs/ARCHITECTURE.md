@@ -245,7 +245,16 @@ For multi-instance deployment:
 
 ---
 
-## 6. State Management
+## 6. Storage & State Management
+
+### 6.0 Storage Overview
+
+| Data Type | Storage | TTL | Scope |
+|-----------|---------|-----|-------|
+| Bars cache | In-memory (API) | 60s | Per ticker+tf+window |
+| Timeline state | In-memory (API) | Permanent | Per ticker+tf |
+| Evidence/Timeline | localStorage (Web) | Daily | Per ticker+tf+date |
+| Signal Evaluations | SQLite (API) | Permanent | All tickers |
 
 ### 6.1 Timeline State (Per Ticker+TF)
 
@@ -286,6 +295,64 @@ def should_emit_event(old_state, new_report):
         return True
 
     return False
+```
+
+### 6.3 Signal Evaluation Storage (SQLite)
+
+Signal evaluations are stored in SQLite database for persistence across restarts.
+
+**Database Location:** `apps/api/data/klinelens.db`
+
+```python
+# Database schema
+CREATE TABLE signal_evaluations (
+    id TEXT PRIMARY KEY,
+    ticker TEXT NOT NULL,
+    tf TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    signal_type TEXT NOT NULL,
+    direction TEXT NOT NULL,
+    predicted_behavior TEXT NOT NULL,
+    entry_price REAL NOT NULL,
+    target_price REAL NOT NULL,
+    invalidation_price REAL NOT NULL,
+    confidence REAL NOT NULL,
+    notes TEXT,
+    status TEXT DEFAULT 'pending',
+    result TEXT,
+    actual_outcome TEXT,
+    evaluation_notes TEXT,
+    evaluated_at TIMESTAMP
+);
+
+CREATE INDEX idx_ticker_tf ON signal_evaluations(ticker, tf);
+CREATE INDEX idx_status ON signal_evaluations(status);
+CREATE INDEX idx_created_at ON signal_evaluations(created_at);
+```
+
+### 6.4 Frontend Daily Cache (localStorage)
+
+Evidence and Timeline data are cached in localStorage with daily TTL.
+
+```typescript
+// Cache key format
+const cacheKey = `klinelens:evidence:${ticker}:${tf}:${date}`;
+const cacheKey = `klinelens:timeline:${ticker}:${tf}:${date}`;
+
+// Cache structure
+interface CachedData {
+  date: string;           // YYYY-MM-DD
+  ticker: string;
+  tf: string;
+  items: Evidence[] | TimelineEvent[];
+  lastUpdated: string;    // ISO timestamp
+}
+
+// Lifecycle
+// 1. On page load: check if cache date matches today
+// 2. If match: load cached items, merge with fresh data
+// 3. If mismatch: clear cache, start fresh
+// 4. On data refresh: update cache with merged data
 ```
 
 ---

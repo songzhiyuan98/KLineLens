@@ -53,14 +53,14 @@ Fetch raw candlestick data for a ticker.
 |-----------|------|----------|-------------|
 | `ticker` | string | Yes | Stock symbol (e.g., "TSLA", "AAPL") |
 | `tf` | enum | Yes | Timeframe: `1m`, `5m`, `1d` |
-| `window` | string | No | Lookback period (default: `1d` for 1m, `6mo` for 1d) |
+| `window` | string | No | Lookback period (default: `5d` for 1m, `1y` for 1d) |
 
 #### Response 200
 ```json
 {
   "ticker": "TSLA",
   "tf": "1m",
-  "bar_count": 390,
+  "bar_count": 1950,
   "bars": [
     {
       "t": "2026-01-13T14:30:00Z",
@@ -92,7 +92,7 @@ Fetch raw candlestick data for a ticker.
 | `h` | float | High price |
 | `l` | float | Low price |
 | `c` | float | Close price |
-| `v` | float | Volume |
+| `v` | float | Volume (0 if unavailable) |
 
 ---
 
@@ -105,7 +105,7 @@ Run full structure + behavior analysis on a ticker.
 {
   "ticker": "TSLA",
   "tf": "1m",
-  "window": "1d"
+  "window": "5d"
 }
 ```
 
@@ -122,8 +122,9 @@ Run full structure + behavior analysis on a ticker.
   "ticker": "TSLA",
   "tf": "1m",
   "generated_at": "2026-01-13T18:30:00Z",
-  "bar_count": 390,
+  "bar_count": 1950,
   "data_gaps": false,
+  "volume_quality": "reliable",
 
   "market_state": {
     "regime": "range",
@@ -136,7 +137,10 @@ Run full structure + behavior analysis on a ticker.
         "low": 245.20,
         "high": 246.10,
         "score": 0.91,
-        "touches": 4
+        "touches": 4,
+        "rejections": 3,
+        "last_reaction": 1.2,
+        "last_test_time": "2026-01-13T16:45:00Z"
       }
     ],
     "resistance": [
@@ -144,7 +148,10 @@ Run full structure + behavior analysis on a ticker.
         "low": 252.60,
         "high": 253.30,
         "score": 0.86,
-        "touches": 3
+        "touches": 3,
+        "rejections": 2,
+        "last_reaction": 0.9,
+        "last_test_time": "2026-01-13T17:30:00Z"
       }
     ]
   },
@@ -155,7 +162,9 @@ Run full structure + behavior analysis on a ticker.
       "direction": "up",
       "level": 253.30,
       "confidence": 0.68,
-      "bar_time": "2026-01-13T17:45:00Z"
+      "bar_time": "2026-01-13T17:45:00Z",
+      "bar_index": 385,
+      "volume_quality": "confirmed"
     }
   ],
 
@@ -170,11 +179,16 @@ Run full structure + behavior analysis on a ticker.
     "dominant": "shakeout",
     "evidence": [
       {
+        "type": "SWEEP",
         "behavior": "shakeout",
+        "severity": "high",
         "bar_time": "2026-01-13T16:22:00Z",
+        "bar_index": 298,
         "metrics": {
-          "volume_ratio": 2.1,
-          "wick_ratio_low": 0.67
+          "rvol": 2.1,
+          "wick_ratio": 0.67,
+          "effort": 2.1,
+          "result": 0.4
         },
         "note": "Broke support then quickly reclaimed"
       }
@@ -184,9 +198,19 @@ Run full structure + behavior analysis on a ticker.
   "timeline": [
     {
       "ts": "2026-01-13T16:22:00Z",
-      "event_type": "shakeout_prob_up",
-      "delta": 0.15,
-      "reason": "Support sweep with quick reclaim"
+      "event_type": "spring",
+      "delta": 0.0,
+      "reason": "Support sweep with quick reclaim",
+      "bar_index": 298,
+      "severity": "critical"
+    },
+    {
+      "ts": "2026-01-13T17:00:00Z",
+      "event_type": "zone_tested",
+      "delta": 0.0,
+      "reason": "Resistance tested",
+      "bar_index": 340,
+      "severity": "info"
     }
   ],
 
@@ -224,6 +248,7 @@ Run full structure + behavior analysis on a ticker.
 | `generated_at` | string | ISO 8601 timestamp when report was generated |
 | `bar_count` | int | Number of bars analyzed |
 | `data_gaps` | bool | True if data gaps were detected |
+| `volume_quality` | string | `reliable`, `partial`, `unavailable` |
 | `market_state` | MarketState | Current market regime |
 | `zones` | Zones | Support and resistance zones |
 | `signals` | Signal[] | Breakout/fakeout signals |
@@ -238,7 +263,7 @@ Run full structure + behavior analysis on a ticker.
 | `regime` | string | `uptrend`, `downtrend`, `range` | Current market structure |
 | `confidence` | float | 0.0 - 1.0 | Confidence in regime classification |
 
-### Zone
+### Zone (Enhanced)
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -246,6 +271,9 @@ Run full structure + behavior analysis on a ticker.
 | `high` | float | Upper bound of price zone |
 | `score` | float | Zone strength score (0-1) |
 | `touches` | int | Number of times zone was tested |
+| `rejections` | int | Number of times price reversed from zone |
+| `last_reaction` | float | Magnitude of last reaction (in ATR) |
+| `last_test_time` | string | Timestamp of last zone test |
 
 ### Zones
 
@@ -254,7 +282,7 @@ Run full structure + behavior analysis on a ticker.
 | `support` | Zone[] | Support zones (sorted by score desc) |
 | `resistance` | Zone[] | Resistance zones (sorted by score desc) |
 
-### Signal
+### Signal (Enhanced)
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -263,6 +291,8 @@ Run full structure + behavior analysis on a ticker.
 | `level` | float | Price level of the signal |
 | `confidence` | float | Signal confidence (0-1) |
 | `bar_time` | string | When the signal occurred |
+| `bar_index` | int | Bar index for click-to-locate |
+| `volume_quality` | string | `confirmed`, `pending`, `unavailable` |
 
 ### Behavior
 
@@ -282,16 +312,28 @@ Run full structure + behavior analysis on a ticker.
 | `distribution` | float | Probability of distribution |
 | `markdown` | float | Probability of markdown |
 
-### Evidence
+### Evidence (Enhanced)
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `type` | string | `VOLUME_SPIKE`, `REJECTION`, `SWEEP`, `ABSORPTION`, `BREAKOUT` |
 | `behavior` | string | Which behavior this evidence supports |
+| `severity` | string | `low`, `med`, `high` |
 | `bar_time` | string | When the evidence was observed |
-| `metrics` | object | Relevant metrics (volume_ratio, wick_ratio, etc.) |
+| `bar_index` | int | Bar index for click-to-locate |
+| `metrics` | object | Relevant metrics (see below) |
 | `note` | string | Human-readable explanation |
 
-### TimelineEvent
+### Evidence Metrics
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `rvol` | float | Relative volume (RVOL) |
+| `wick_ratio` | float | Relevant wick ratio |
+| `effort` | float | Volume effort (RVOL) |
+| `result` | float | Price result (range/ATR) |
+
+### TimelineEvent (Enhanced)
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -299,16 +341,35 @@ Run full structure + behavior analysis on a ticker.
 | `event_type` | string | Event type enum (see below) |
 | `delta` | float | Probability change magnitude |
 | `reason` | string | Human-readable reason |
+| `bar_index` | int | Bar index for click-to-locate |
+| `severity` | string | `info`, `warning`, `critical` |
 
-#### Event Types
+#### Event Types — Critical (Hard Events)
+- `regime_change` - Market regime changed
+- `behavior_change` - Dominant behavior changed
+- `breakout_confirmed` - Breakout confirmed
+- `breakdown_confirmed` - Breakdown confirmed
+- `fakeout_detected` - Fakeout detected
 - `shakeout_prob_up`, `shakeout_prob_down`
 - `accumulation_prob_up`, `accumulation_prob_down`
 - `markup_prob_up`, `markup_prob_down`
 - `distribution_prob_up`, `distribution_prob_down`
 - `markdown_prob_up`, `markdown_prob_down`
-- `regime_change`
-- `breakout_confirmed`, `breakdown_confirmed`
-- `fakeout_detected`
+
+#### Event Types — Narrative (Soft Events)
+- `zone_approached` - Price approaching key zone
+- `zone_tested` - Price tested zone
+- `zone_rejected` - Price rejected from zone
+- `zone_accepted` - Price closed through zone
+- `spring` - Wyckoff spring (sweep below support + reclaim)
+- `upthrust` - Wyckoff upthrust (sweep above resistance + reject)
+- `absorption_clue` - High effort + low result detected
+- `volume_spike` - RVOL >= 2.0
+- `volume_dryup` - Volume dried up
+- `volume_low` - Volume below average
+- `new_swing_high` - New swing high formed
+- `new_swing_low` - New swing low formed
+- `initialized` - Initial analysis state
 
 ### PlaybookPlan
 
@@ -323,19 +384,234 @@ Run full structure + behavior analysis on a ticker.
 
 ---
 
+## Volume Quality Handling
+
+The API includes volume quality awareness throughout:
+
+| Quality | Meaning | Effect |
+|---------|---------|--------|
+| `reliable` | Volume data from reliable source (TwelveData, Polygon) | Full confirmation available |
+| `partial` | Volume may be delayed or incomplete | Reduced confidence |
+| `unavailable` | No volume data | Breakout cannot be confirmed |
+
+**Frontend should display:**
+- When `volume_quality = "unavailable"`: "Volume N/A - confirmation unavailable"
+- When `volume_quality = "pending"`: "Awaiting volume confirmation"
+
+---
+
 ## Example Requests
 
 ### Fetch 1-minute bars
 ```bash
-curl "http://localhost:8000/v1/bars?ticker=TSLA&tf=1m&window=1d"
+curl "http://localhost:8000/v1/bars?ticker=TSLA&tf=1m&window=5d"
 ```
 
 ### Run analysis
 ```bash
 curl -X POST "http://localhost:8000/v1/analyze" \
   -H "Content-Type: application/json" \
-  -d '{"ticker": "TSLA", "tf": "1m", "window": "1d"}'
+  -d '{"ticker": "TSLA", "tf": "1m", "window": "5d"}'
 ```
+
+---
+
+---
+
+### 3. POST `/v1/signal-evaluation` — Record Signal Prediction
+
+Record a new signal prediction for later evaluation.
+
+#### Request Body
+```json
+{
+  "ticker": "TSLA",
+  "tf": "1m",
+  "signal_type": "breakout_confirmed",
+  "direction": "up",
+  "predicted_behavior": "markup",
+  "entry_price": 253.30,
+  "target_price": 259.10,
+  "invalidation_price": 251.80,
+  "confidence": 0.72,
+  "notes": "Breakout with volume confirmation"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `ticker` | string | Yes | Stock symbol |
+| `tf` | enum | Yes | Timeframe: `1m`, `5m`, `1d` |
+| `signal_type` | string | Yes | Signal type (breakout_confirmed, fakeout, etc.) |
+| `direction` | string | Yes | `up` or `down` |
+| `predicted_behavior` | string | Yes | Expected behavior outcome |
+| `entry_price` | float | Yes | Entry price level |
+| `target_price` | float | Yes | Target price |
+| `invalidation_price` | float | Yes | Stop/invalidation level |
+| `confidence` | float | Yes | Prediction confidence (0-1) |
+| `notes` | string | No | Additional notes |
+
+#### Response 201
+```json
+{
+  "id": "eval_20260114_001",
+  "ticker": "TSLA",
+  "tf": "1m",
+  "created_at": "2026-01-14T18:30:00Z",
+  "signal_type": "breakout_confirmed",
+  "direction": "up",
+  "predicted_behavior": "markup",
+  "entry_price": 253.30,
+  "target_price": 259.10,
+  "invalidation_price": 251.80,
+  "confidence": 0.72,
+  "notes": "Breakout with volume confirmation",
+  "status": "pending",
+  "result": null,
+  "actual_outcome": null,
+  "evaluation_notes": null,
+  "evaluated_at": null
+}
+```
+
+---
+
+### 4. GET `/v1/signal-evaluations` — Get Signal Evaluation History
+
+Retrieve signal evaluation records for a ticker.
+
+#### Request
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `ticker` | string | Yes | Stock symbol |
+| `tf` | enum | No | Filter by timeframe |
+| `status` | enum | No | Filter by status: `pending`, `correct`, `incorrect` |
+| `limit` | int | No | Max records (default: 50) |
+| `offset` | int | No | Pagination offset |
+
+#### Response 200
+```json
+{
+  "ticker": "TSLA",
+  "total": 25,
+  "records": [
+    {
+      "id": "eval_20260114_001",
+      "ticker": "TSLA",
+      "tf": "1m",
+      "created_at": "2026-01-14T18:30:00Z",
+      "signal_type": "breakout_confirmed",
+      "direction": "up",
+      "predicted_behavior": "markup",
+      "entry_price": 253.30,
+      "target_price": 259.10,
+      "invalidation_price": 251.80,
+      "confidence": 0.72,
+      "notes": "Breakout with volume confirmation",
+      "status": "correct",
+      "result": "target_hit",
+      "actual_outcome": "Price reached 260.50",
+      "evaluation_notes": "Clean breakout with follow-through",
+      "evaluated_at": "2026-01-14T20:15:00Z"
+    }
+  ],
+  "statistics": {
+    "total_predictions": 25,
+    "correct": 18,
+    "incorrect": 5,
+    "pending": 2,
+    "accuracy_rate": 0.78,
+    "by_signal_type": {
+      "breakout_confirmed": { "total": 10, "correct": 8, "accuracy": 0.80 },
+      "fakeout": { "total": 8, "correct": 6, "accuracy": 0.75 },
+      "breakout_attempt": { "total": 7, "correct": 4, "accuracy": 0.57 }
+    }
+  }
+}
+```
+
+---
+
+### 5. PUT `/v1/signal-evaluation/{id}` — Update Signal Evaluation
+
+Update the result of a signal prediction.
+
+#### Request Body
+```json
+{
+  "status": "correct",
+  "result": "target_hit",
+  "actual_outcome": "Price reached 260.50, target was 259.10",
+  "evaluation_notes": "Clean breakout with follow-through, volume sustained"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `status` | enum | Yes | `correct` or `incorrect` |
+| `result` | string | Yes | Result type (see below) |
+| `actual_outcome` | string | Yes | What actually happened |
+| `evaluation_notes` | string | No | Analysis notes |
+
+#### Result Types
+
+| Result | Description |
+|--------|-------------|
+| `target_hit` | Price reached target |
+| `invalidation_hit` | Price hit stop/invalidation |
+| `partial_correct` | Moved in predicted direction but didn't reach target |
+| `direction_wrong` | Moved opposite to prediction |
+| `timeout` | No significant move within evaluation window |
+
+#### Response 200
+```json
+{
+  "id": "eval_20260114_001",
+  "status": "correct",
+  "result": "target_hit",
+  "actual_outcome": "Price reached 260.50",
+  "evaluation_notes": "Clean breakout with follow-through",
+  "evaluated_at": "2026-01-14T20:15:00Z"
+}
+```
+
+---
+
+## Schema Definitions (Signal Evaluation)
+
+### SignalEvaluation
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique evaluation ID |
+| `ticker` | string | Stock symbol |
+| `tf` | string | Timeframe |
+| `created_at` | string | When prediction was made |
+| `signal_type` | string | Type of signal |
+| `direction` | string | `up` or `down` |
+| `predicted_behavior` | string | Expected behavior |
+| `entry_price` | float | Entry price level |
+| `target_price` | float | Target price |
+| `invalidation_price` | float | Stop level |
+| `confidence` | float | Prediction confidence |
+| `notes` | string | Initial notes |
+| `status` | string | `pending`, `correct`, `incorrect` |
+| `result` | string | Result type |
+| `actual_outcome` | string | What happened |
+| `evaluation_notes` | string | Analysis notes |
+| `evaluated_at` | string | When evaluated |
+
+### EvaluationStatistics
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `total_predictions` | int | Total predictions made |
+| `correct` | int | Correct predictions |
+| `incorrect` | int | Incorrect predictions |
+| `pending` | int | Awaiting evaluation |
+| `accuracy_rate` | float | Overall accuracy (0-1) |
+| `by_signal_type` | object | Breakdown by signal type |
 
 ---
 
@@ -344,4 +620,8 @@ curl -X POST "http://localhost:8000/v1/analyze" \
 1. **Caching**: Bars are cached for ~60s to reduce provider load
 2. **Timestamps**: All timestamps are UTC in ISO 8601 format
 3. **MVP Limitation**: No authentication; intended for personal/local use
-4. **Future**: WebSocket endpoint for real-time updates planned for V1
+4. **Volume**: Reliable 1-minute volume requires TwelveData or Polygon provider
+5. **Click-to-Locate**: `bar_index` fields enable chart highlighting features
+6. **Signal Evaluation**: Stored in SQLite database, persists across sessions
+7. **Daily Cache**: Evidence/Timeline use localStorage with daily TTL
+8. **Future**: WebSocket endpoint for real-time updates planned for V2

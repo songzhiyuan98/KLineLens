@@ -140,13 +140,17 @@ class MarketDataProvider(ABC):
 
         返回:
             默认的回溯时间范围
-            - 1m -> "1d"（1分钟线默认获取1天）
-            - 5m -> "5d"（5分钟线默认获取5天）
-            - 1d -> "6mo"（日线默认获取6个月）
+            - 1m -> "5d"（1分钟线默认获取5天，约1500-2000根K线）
+            - 5m -> "1mo"（5分钟线默认获取1个月，约1000根K线）
+            - 1d -> "1y"（日线默认获取1年，约250根K线）
+
+        注意:
+            Yahoo Finance 的 1m 数据最多保留 7 天，5d 是安全选择。
+            更多数据有助于结构检测和行为推断的准确性。
         """
         defaults = {
-            "1m": "1d",
-            "5m": "5d",
-            "1d": "6mo",
+            "1m": "5d",
+            "5m": "1mo",
+            "1d": "1y",
         }
-        return defaults.get(timeframe, "1d")
+        return defaults.get(timeframe, "5d")
