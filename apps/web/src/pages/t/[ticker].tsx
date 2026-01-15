@@ -230,10 +230,15 @@ const s: Record<string, React.CSSProperties> = {
   chartHeader: {
     display: 'flex',
     alignItems: 'center',
-    gap: '1.5rem',
+    justifyContent: 'space-between',
     marginBottom: '1rem',
     paddingBottom: '0.75rem',
     borderBottom: `1px solid ${C.dividerLight}`,
+  },
+  chartHeaderLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '1.5rem',
   },
   chartStatus: {
     display: 'flex',
@@ -902,6 +907,15 @@ export default function TickerDetail() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [chartHeight, setChartHeight] = useState(380);
 
+  // Real-time price from WebSocket/SSE
+  const [realtimePrice, setRealtimePrice] = useState<{
+    price: number;
+    change?: number;
+    changePct?: number;
+    timestamp?: string;
+  } | null>(null);
+  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
+
   // Daily cached evidence and timeline
   const [cachedEvidence, setCachedEvidence] = useState<Evidence[]>([]);
   const [cachedTimeline, setCachedTimeline] = useState<TimelineEvent[]>([]);
@@ -951,6 +965,64 @@ export default function TickerDetail() {
     window.addEventListener('resize', updateChartHeight);
     return () => window.removeEventListener('resize', updateChartHeight);
   }, []);
+
+  // Real-time price SSE connection
+  useEffect(() => {
+    if (!ticker) return;
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    let eventSource: EventSource | null = null;
+    let retryTimeout: NodeJS.Timeout | null = null;
+
+    const connect = () => {
+      try {
+        eventSource = new EventSource(`${apiUrl}/v1/stream/${ticker}`);
+
+        eventSource.onopen = () => {
+          console.log(`[SSE] Connected to ${ticker} stream`);
+          setIsRealtimeConnected(true);
+        };
+
+        eventSource.addEventListener('price', (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            setRealtimePrice({
+              price: data.price,
+              change: data.change,
+              changePct: data.change_pct,
+              timestamp: data.timestamp,
+            });
+          } catch (e) {
+            console.error('[SSE] Failed to parse price:', e);
+          }
+        });
+
+        eventSource.onerror = (error) => {
+          console.warn('[SSE] Connection error, will retry...', error);
+          setIsRealtimeConnected(false);
+          eventSource?.close();
+          // Retry after 5 seconds
+          retryTimeout = setTimeout(connect, 5000);
+        };
+      } catch (e) {
+        console.error('[SSE] Failed to connect:', e);
+        setIsRealtimeConnected(false);
+      }
+    };
+
+    connect();
+
+    return () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+      if (retryTimeout) {
+        clearTimeout(retryTimeout);
+      }
+      setIsRealtimeConnected(false);
+      setRealtimePrice(null);
+    };
+  }, [ticker]);
 
   // 加载单个周期的 narrative
   const loadNarrative = useCallback(async (tf: Timeframe) => {
@@ -1107,12 +1179,31 @@ export default function TickerDetail() {
     loadEvaluations();
   }, [ticker, timeframe]);
 
-  // Computed values
-  const currentPrice = bars?.[bars.length - 1]?.c;
+  // Computed values - prefer realtime price when available
+  const barPrice = bars?.[bars.length - 1]?.c;
+  const currentPrice = realtimePrice?.price ?? barPrice;
   const prevPrice = bars?.[bars.length - 2]?.c;
-  const priceChange = currentPrice && prevPrice ? currentPrice - prevPrice : 0;
-  const priceChangePercent = prevPrice ? (priceChange / prevPrice) * 100 : 0;
+  // Use realtime change data if available, otherwise calculate from bars
+  const priceChange = realtimePrice?.change ?? (currentPrice && prevPrice ? currentPrice - prevPrice : 0);
+  const priceChangePercent = realtimePrice?.changePct ?? (prevPrice ? (priceChange / prevPrice) * 100 : 0);
   const isUp = priceChange >= 0;
+
+  // Display bars: update last bar with realtime price when WebSocket connected
+  // Only for stocks with active WebSocket subscription
+  const displayBars = useMemo(() => {
+    if (!bars || bars.length === 0) return bars;
+    if (!isRealtimeConnected || !realtimePrice) return bars;
+
+    // Clone bars and update last bar's close with realtime price
+    const updated = [...bars];
+    const lastBar = { ...updated[updated.length - 1] };
+    lastBar.c = realtimePrice.price;
+    // Update high/low if realtime price exceeds them
+    if (realtimePrice.price > lastBar.h) lastBar.h = realtimePrice.price;
+    if (realtimePrice.price < lastBar.l) lastBar.l = realtimePrice.price;
+    updated[updated.length - 1] = lastBar;
+    return updated;
+  }, [bars, isRealtimeConnected, realtimePrice]);
 
   const regime = analysis?.market_state?.regime || 'range';
   const regimeConf = analysis?.market_state?.confidence || 0;
@@ -1543,7 +1634,12 @@ export default function TickerDetail() {
               </div>
               <div style={s.statusItem}>
                 <span style={s.statusLabel}>{t('delay')}:</span>
-                <span style={s.statusValue}>~15m</span>
+                <span style={{
+                  ...s.statusValue,
+                  color: isRealtimeConnected ? C.bullish : '#888888'
+                }}>
+                  {isRealtimeConnected ? '⚡ Realtime' : '~60s'}
+                </span>
               </div>
               <div style={s.statusItem}>
                 <span style={s.statusLabel}>{t('updated')}:</span>
@@ -1632,29 +1728,31 @@ export default function TickerDetail() {
                 <div style={s.chartSection}>
                   {/* Chart Header (status line) */}
                   <div style={s.chartHeader}>
-                    <div style={s.chartStatus}>
-                      <span style={s.chartStatusLabel}>{t('label_regime')}:</span>
-                      <span style={{ ...s.chartStatusValue, color: getRegimeColor() }}>
-                        {getRegimeText()} ({Math.round(regimeConf * 100)}%)
-                      </span>
-                    </div>
-                    <div style={s.chartStatus}>
-                      <span style={s.chartStatusLabel}>{t('label_breakout')}:</span>
-                      <span style={{ ...s.chartStatusValue, color: getBreakoutStateColor() }}>
-                        {getBreakoutStateText()}
-                      </span>
-                    </div>
-                    <div style={s.chartStatus}>
-                      <span style={s.chartStatusLabel}>{t('label_behavior')}:</span>
-                      <span style={s.chartStatusValue}>
-                        {t(dominantBehavior) || '—'}
-                      </span>
+                    <div style={s.chartHeaderLeft}>
+                      <div style={s.chartStatus}>
+                        <span style={s.chartStatusLabel}>{t('label_regime')}:</span>
+                        <span style={{ ...s.chartStatusValue, color: getRegimeColor() }}>
+                          {getRegimeText()} ({Math.round(regimeConf * 100)}%)
+                        </span>
+                      </div>
+                      <div style={s.chartStatus}>
+                        <span style={s.chartStatusLabel}>{t('label_breakout')}:</span>
+                        <span style={{ ...s.chartStatusValue, color: getBreakoutStateColor() }}>
+                          {getBreakoutStateText()}
+                        </span>
+                      </div>
+                      <div style={s.chartStatus}>
+                        <span style={s.chartStatusLabel}>{t('label_behavior')}:</span>
+                        <span style={s.chartStatusValue}>
+                          {t(dominantBehavior) || '—'}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
                   <div style={s.chartContainer}>
                     <CandlestickChart
-                      bars={bars || []}
+                      bars={displayBars || []}
                       supportZones={supportZones}
                       resistanceZones={resistanceZones}
                       height={chartHeight}

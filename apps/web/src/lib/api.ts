@@ -362,3 +362,114 @@ export async function deleteSignalEvaluation(evalId: string): Promise<void> {
     throw new Error(error.detail?.message || 'Failed to delete signal evaluation');
   }
 }
+
+// ============ Watchlist (自选股) API ============
+
+/** 自选股项目 */
+export interface WatchlistItem {
+  ticker: string;
+  added_at: string;
+  note?: string;
+  realtime?: {
+    price: number;
+    change?: number;
+    change_pct?: number;
+    timestamp?: string;
+  };
+}
+
+/** 自选股列表响应 */
+export interface WatchlistResponse {
+  count: number;
+  max: number;
+  items: WatchlistItem[];
+}
+
+/** 自选股状态响应 */
+export interface WatchlistStatusResponse {
+  ticker: string;
+  is_watched: boolean;
+  has_realtime: boolean;
+  realtime?: {
+    price: number;
+    change?: number;
+    change_pct?: number;
+    timestamp?: string;
+  };
+  count: number;
+  max: number;
+}
+
+/**
+ * 获取自选股列表
+ */
+export async function fetchWatchlist(): Promise<WatchlistResponse> {
+  const res = await fetch(`${API_BASE}/v1/watchlist`);
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail?.message || 'Failed to fetch watchlist');
+  }
+
+  return res.json();
+}
+
+/**
+ * 添加股票到自选股
+ */
+export async function addToWatchlist(ticker: string, note?: string): Promise<{
+  success: boolean;
+  ticker: string;
+  message: string;
+  count: number;
+  max: number;
+}> {
+  const res = await fetch(`${API_BASE}/v1/watchlist/${ticker}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ note }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail?.message || 'Failed to add to watchlist');
+  }
+
+  return res.json();
+}
+
+/**
+ * 从自选股移除
+ */
+export async function removeFromWatchlist(ticker: string): Promise<{
+  success: boolean;
+  ticker: string;
+  message: string;
+  count: number;
+  max: number;
+}> {
+  const res = await fetch(`${API_BASE}/v1/watchlist/${ticker}`, {
+    method: 'DELETE',
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail?.message || 'Failed to remove from watchlist');
+  }
+
+  return res.json();
+}
+
+/**
+ * 获取股票的自选股状态
+ */
+export async function fetchWatchlistStatus(ticker: string): Promise<WatchlistStatusResponse> {
+  const res = await fetch(`${API_BASE}/v1/watchlist/${ticker}/status`);
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail?.message || 'Failed to fetch watchlist status');
+  }
+
+  return res.json();
+}

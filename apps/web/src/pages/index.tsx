@@ -1,11 +1,12 @@
 /**
- * 首页 - 简洁搜索页
+ * 首页 - 简洁搜索页 + 自选股
  */
 
 import { useState, FormEvent, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { Layout } from '../components';
 import { useI18n } from '../lib/i18n';
+import { fetchWatchlist, WatchlistItem } from '../lib/api';
 
 // ============ Ticker Database ============
 interface TickerInfo {
@@ -36,42 +37,36 @@ const TICKERS: TickerInfo[] = [
 
 const MONO = '"SF Mono", "Fira Code", "Consolas", monospace';
 
-// Recent history
-const RECENT_KEY = 'klinelens:recent';
-const MAX_RECENT = 6;
-
-function getRecentTickers(): string[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const stored = localStorage.getItem(RECENT_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch {
-    return [];
-  }
-}
-
-function addRecentTicker(symbol: string): void {
-  if (typeof window === 'undefined') return;
-  try {
-    const recent = getRecentTickers().filter(s => s !== symbol);
-    recent.unshift(symbol);
-    localStorage.setItem(RECENT_KEY, JSON.stringify(recent.slice(0, MAX_RECENT)));
-  } catch {}
-}
-
 export default function Home() {
   const [ticker, setTicker] = useState('');
   const [error, setError] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
-  const [recentTickers, setRecentTickers] = useState<string[]>([]);
+  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
+  const [watchlistMax, setWatchlistMax] = useState(8);
+  const [watchlistLoading, setWatchlistLoading] = useState(true);
   const router = useRouter();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
 
-  // Load recent on mount
+  // Load watchlist on mount
   useEffect(() => {
-    setRecentTickers(getRecentTickers());
+    loadWatchlist();
+    // Refresh watchlist every 5 seconds for realtime prices
+    const interval = setInterval(loadWatchlist, 5000);
+    return () => clearInterval(interval);
   }, []);
+
+  const loadWatchlist = async () => {
+    try {
+      const data = await fetchWatchlist();
+      setWatchlist(data.items);
+      setWatchlistMax(data.max);
+    } catch (err) {
+      console.error('Failed to load watchlist:', err);
+    } finally {
+      setWatchlistLoading(false);
+    }
+  };
 
   const suggestions = useMemo(() => {
     if (!ticker.trim()) return [];
@@ -102,7 +97,6 @@ export default function Home() {
       setError(t('error_invalid_ticker'));
       return;
     }
-    addRecentTicker(sanitized);
     router.push(`/t/${encodeURIComponent(sanitized)}`);
   };
 
@@ -116,7 +110,6 @@ export default function Home() {
       setSelectedIndex(prev => (prev > 0 ? prev - 1 : suggestions.length - 1));
     } else if (e.key === 'Enter' && selectedIndex >= 0) {
       e.preventDefault();
-      addRecentTicker(suggestions[selectedIndex].symbol);
       router.push(`/t/${encodeURIComponent(suggestions[selectedIndex].symbol)}`);
     } else if (e.key === 'Escape') {
       setShowSuggestions(false);
@@ -124,8 +117,18 @@ export default function Home() {
   };
 
   const handleSelectTicker = (symbol: string) => {
-    addRecentTicker(symbol);
     router.push(`/t/${encodeURIComponent(symbol)}`);
+  };
+
+  const formatPrice = (price?: number) => {
+    if (!price) return '—';
+    return price >= 1000 ? price.toFixed(0) : price.toFixed(2);
+  };
+
+  const formatChange = (pct?: number) => {
+    if (pct === undefined || pct === null) return '';
+    const sign = pct >= 0 ? '+' : '';
+    return `${sign}${pct.toFixed(2)}%`;
   };
 
   return (
@@ -258,51 +261,131 @@ export default function Home() {
           )}
         </form>
 
-        {/* Recent */}
-        {recentTickers.length > 0 && (
+        {/* Watchlist */}
+        <div style={{
+          marginTop: '2.5rem',
+          width: '100%',
+          maxWidth: '560px',
+        }}>
           <div style={{
             display: 'flex',
-            gap: '0.75rem',
-            marginTop: '2rem',
-            flexWrap: 'wrap',
-            justifyContent: 'center',
             alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem',
+            marginBottom: '1rem',
           }}>
-            <span style={{ fontSize: '0.8125rem', color: '#aaa' }}>Recent:</span>
-            {recentTickers.map(symbol => (
-              <button
-                key={symbol}
-                onClick={() => handleSelectTicker(symbol)}
-                style={{
-                  padding: '0.625rem 1.25rem',
-                  fontSize: '0.9375rem',
-                  fontFamily: MONO,
-                  fontWeight: 500,
-                  color: '#333',
-                  backgroundColor: '#fff',
-                  border: '1px solid #ddd',
-                  borderRadius: '999px',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f5f5f5';
-                  e.currentTarget.style.borderColor = '#ccc';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#fff';
-                  e.currentTarget.style.borderColor = '#ddd';
-                }}
-              >
-                {symbol}
-              </button>
-            ))}
+            <span style={{ fontSize: '0.8125rem', color: '#888' }}>
+              {lang === 'zh' ? '自选股' : 'Watchlist'}
+            </span>
+            <span style={{
+              fontSize: '0.75rem',
+              color: '#aaa',
+              backgroundColor: '#f5f5f5',
+              padding: '0.125rem 0.5rem',
+              borderRadius: '999px',
+            }}>
+              {watchlist.length}/{watchlistMax}
+            </span>
           </div>
-        )}
+
+          {watchlistLoading ? (
+            <div style={{ textAlign: 'center', color: '#aaa', fontSize: '0.875rem' }}>
+              {lang === 'zh' ? '加载中...' : 'Loading...'}
+            </div>
+          ) : watchlist.length === 0 ? (
+            <div style={{ textAlign: 'center', color: '#aaa', fontSize: '0.875rem' }}>
+              {lang === 'zh' ? '暂无自选股，在详情页点击 ☆ 添加' : 'No watchlist items. Click ☆ on detail page to add.'}
+            </div>
+          ) : (
+            <div style={{
+              display: 'flex',
+              gap: '0.75rem',
+              flexWrap: 'wrap',
+              justifyContent: 'center',
+            }}>
+              {watchlist.map(item => {
+                const hasRealtime = !!item.realtime;
+                const change = item.realtime?.change_pct;
+                const isUp = (change ?? 0) >= 0;
+
+                return (
+                  <button
+                    key={item.ticker}
+                    onClick={() => handleSelectTicker(item.ticker)}
+                    style={{
+                      padding: '0.75rem 1rem',
+                      minWidth: '120px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      backgroundColor: '#fff',
+                      border: '1px solid #ddd',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#fafafa';
+                      e.currentTarget.style.borderColor = '#ccc';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#fff';
+                      e.currentTarget.style.borderColor = '#ddd';
+                    }}
+                  >
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.375rem',
+                    }}>
+                      <span style={{
+                        fontFamily: MONO,
+                        fontWeight: 600,
+                        fontSize: '0.9375rem',
+                        color: '#000',
+                      }}>
+                        {item.ticker}
+                      </span>
+                      {hasRealtime && (
+                        <span style={{
+                          fontSize: '0.625rem',
+                          color: '#16a34a',
+                        }}>
+                          ⚡
+                        </span>
+                      )}
+                    </div>
+                    {hasRealtime && (
+                      <>
+                        <span style={{
+                          fontFamily: MONO,
+                          fontSize: '0.875rem',
+                          fontWeight: 500,
+                          color: '#333',
+                        }}>
+                          ${formatPrice(item.realtime?.price)}
+                        </span>
+                        <span style={{
+                          fontFamily: MONO,
+                          fontSize: '0.75rem',
+                          fontWeight: 500,
+                          color: isUp ? '#16a34a' : '#dc2626',
+                        }}>
+                          {formatChange(change)}
+                        </span>
+                      </>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {/* Hint */}
         <p style={{
-          marginTop: '3rem',
+          marginTop: '2.5rem',
           color: '#aaa',
           fontSize: '0.8125rem',
         }}>

@@ -15,6 +15,8 @@ FastAPI 应用程序入口，提供市场数据和分析接口。
     http://localhost:8000/docs
 """
 
+import asyncio
+import json
 import logging
 import sys
 import os
@@ -24,13 +26,16 @@ from datetime import datetime
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from sse_starlette.sse import EventSourceResponse
 
 from .config import settings
 from .cache import get_cache, cache_key
 from .providers import get_provider, TickerNotFoundError, RateLimitError, ProviderError
 from .services.llm_service import LLMService, generate_narrative, prepare_analysis_for_llm
-from .database import SignalEvaluationDB, SignalEvaluation, generate_eval_id
+from .database import SignalEvaluationDB, SignalEvaluation, generate_eval_id, WatchlistDB, WatchlistItem
+from .websocket_manager import init_websocket, get_websocket_manager, RealtimePrice
 
 # 导入 core 模块
 # 支持两种环境：
@@ -134,6 +139,10 @@ cache = get_cache(default_ttl=settings.cache_ttl)
 eval_db = SignalEvaluationDB()
 logger.info(f"Signal Evaluation DB 初始化完成: {eval_db.db_path}")
 
+# 初始化 Watchlist 数据库
+watchlist_db = WatchlistDB()
+logger.info(f"Watchlist DB 初始化完成 (最大 {watchlist_db.MAX_ITEMS} 个)")
+
 # 初始化 LLM 服务（用于生成叙事报告）
 llm_service = LLMService(
     provider=settings.llm_provider,
@@ -146,6 +155,43 @@ if settings.llm_api_key:
     logger.info(f"LLM 服务已配置: {settings.llm_provider}")
 else:
     logger.warning("LLM API Key 未配置，叙事生成功能不可用")
+
+
+# ============ WebSocket 实时数据 ============
+
+@app.on_event("startup")
+async def startup_event():
+    """
+    应用启动事件
+
+    初始化 WebSocket 连接到 TwelveData，并订阅所有自选股。
+    """
+    if settings.provider == "twelvedata" and settings.twelvedata_api_key:
+        try:
+            ws_manager = await init_websocket(settings.twelvedata_api_key)
+            logger.info("TwelveData WebSocket 已初始化")
+
+            # 订阅所有自选股
+            watchlist = watchlist_db.list()
+            if watchlist:
+                for item in watchlist:
+                    await ws_manager.subscribe(item.ticker)
+                logger.info(f"已订阅 {len(watchlist)} 个自选股: {[w.ticker for w in watchlist]}")
+            else:
+                logger.info("自选股列表为空，无需订阅")
+        except Exception as e:
+            logger.warning(f"WebSocket 初始化失败（将使用轮询模式）: {e}")
+    else:
+        logger.info("WebSocket 未启用（非 TwelveData 提供者或未配置 API Key）")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """应用关闭事件"""
+    ws_manager = get_websocket_manager()
+    if ws_manager:
+        await ws_manager.disconnect()
+        logger.info("WebSocket 已关闭")
 
 
 # ============ 辅助函数 ============
@@ -904,3 +950,343 @@ async def delete_signal_evaluation(eval_id: str):
             status_code=500,
             detail={"code": "DB_ERROR", "message": "数据库错误"}
         )
+
+
+# ============ Watchlist (自选股) API ============
+
+@app.get("/v1/watchlist")
+async def get_watchlist():
+    """
+    获取自选股列表
+
+    返回所有自选股及其实时状态。
+    """
+    try:
+        items = watchlist_db.list()
+        ws_manager = get_websocket_manager()
+
+        result = []
+        for item in items:
+            # 获取实时价格（如果有）
+            realtime = None
+            if ws_manager:
+                price_data = ws_manager.get_latest_price(item.ticker)
+                if price_data:
+                    realtime = {
+                        "price": price_data.price,
+                        "change": price_data.day_change,
+                        "change_pct": price_data.day_change_pct,
+                        "timestamp": price_data.timestamp.isoformat() if price_data.timestamp else None,
+                    }
+
+            result.append({
+                "ticker": item.ticker,
+                "added_at": item.added_at,
+                "note": item.note,
+                "realtime": realtime,
+            })
+
+        return {
+            "count": len(items),
+            "max": watchlist_db.MAX_ITEMS,
+            "items": result,
+        }
+    except Exception as e:
+        logger.error(f"获取自选股列表失败: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={"code": "DB_ERROR", "message": "数据库错误"}
+        )
+
+
+@app.post("/v1/watchlist/{ticker}", status_code=201)
+async def add_to_watchlist(ticker: str, note: Optional[str] = None):
+    """
+    添加股票到自选股
+
+    同时订阅 WebSocket 实时数据。
+    最多添加 8 个股票（TwelveData 免费额度限制）。
+
+    参数:
+        ticker: 股票代码
+        note: 可选备注
+
+    返回:
+        添加结果
+    """
+    ticker = ticker.upper()
+
+    try:
+        success, message = watchlist_db.add(ticker, note)
+
+        if not success:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "ADD_FAILED", "message": message}
+            )
+
+        # 订阅 WebSocket
+        ws_manager = get_websocket_manager()
+        if ws_manager:
+            await ws_manager.subscribe(ticker)
+            logger.info(f"已订阅 WebSocket: {ticker}")
+
+        return {
+            "success": True,
+            "ticker": ticker,
+            "message": message,
+            "count": watchlist_db.count(),
+            "max": watchlist_db.MAX_ITEMS,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"添加自选股失败: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={"code": "DB_ERROR", "message": "数据库错误"}
+        )
+
+
+@app.delete("/v1/watchlist/{ticker}")
+async def remove_from_watchlist(ticker: str):
+    """
+    从自选股移除
+
+    同时取消 WebSocket 订阅。
+
+    参数:
+        ticker: 股票代码
+
+    返回:
+        移除结果
+    """
+    ticker = ticker.upper()
+
+    try:
+        success, message = watchlist_db.remove(ticker)
+
+        if not success:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "NOT_FOUND", "message": message}
+            )
+
+        # 取消 WebSocket 订阅
+        ws_manager = get_websocket_manager()
+        if ws_manager:
+            await ws_manager.unsubscribe(ticker)
+            logger.info(f"已取消 WebSocket 订阅: {ticker}")
+
+        return {
+            "success": True,
+            "ticker": ticker,
+            "message": message,
+            "count": watchlist_db.count(),
+            "max": watchlist_db.MAX_ITEMS,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"移除自选股失败: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={"code": "DB_ERROR", "message": "数据库错误"}
+        )
+
+
+@app.get("/v1/watchlist/{ticker}/status")
+async def get_watchlist_status(ticker: str):
+    """
+    检查股票是否在自选股列表
+
+    参数:
+        ticker: 股票代码
+
+    返回:
+        是否在自选股列表及实时数据状态
+    """
+    ticker = ticker.upper()
+
+    is_watched = watchlist_db.is_in_watchlist(ticker)
+    ws_manager = get_websocket_manager()
+
+    realtime = None
+    if is_watched and ws_manager:
+        price_data = ws_manager.get_latest_price(ticker)
+        if price_data:
+            realtime = {
+                "price": price_data.price,
+                "change": price_data.day_change,
+                "change_pct": price_data.day_change_pct,
+                "timestamp": price_data.timestamp.isoformat() if price_data.timestamp else None,
+            }
+
+    return {
+        "ticker": ticker,
+        "is_watched": is_watched,
+        "has_realtime": realtime is not None,
+        "realtime": realtime,
+        "count": watchlist_db.count(),
+        "max": watchlist_db.MAX_ITEMS,
+    }
+
+
+# ============ 实时数据流 API ============
+
+@app.get("/v1/stream/status")
+async def stream_status():
+    """
+    WebSocket 连接状态
+
+    返回当前 WebSocket 连接状态和已订阅的 symbols。
+    """
+    ws_manager = get_websocket_manager()
+
+    if ws_manager is None:
+        return {
+            "enabled": False,
+            "connected": False,
+            "subscribed_symbols": [],
+            "message": "WebSocket 未配置（需要 TwelveData API Key）"
+        }
+
+    return {
+        "enabled": True,
+        "connected": ws_manager.is_connected,
+        "subscribed_symbols": list(ws_manager.subscribed_symbols),
+        "cached_prices": {
+            symbol: {
+                "price": p.price,
+                "timestamp": p.timestamp.isoformat() if p.timestamp else None
+            }
+            for symbol, p in ws_manager.get_all_prices().items()
+        }
+    }
+
+
+@app.get("/v1/stream/{ticker}")
+async def stream_price(ticker: str):
+    """
+    实时价格 SSE 流
+
+    通过 Server-Sent Events 推送实时价格更新。
+    需要 TwelveData WebSocket 支持。
+
+    参数:
+        ticker: 股票代码（如 QQQ, AAPL）
+
+    返回:
+        SSE 事件流，每次价格更新推送一条消息
+
+    事件格式:
+        event: price
+        data: {"symbol": "QQQ", "price": 520.50, "timestamp": "...", "change": 1.25, "change_pct": 0.24}
+    """
+    ticker = ticker.upper()
+    ws_manager = get_websocket_manager()
+
+    if ws_manager is None:
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "WEBSOCKET_NOT_AVAILABLE", "message": "实时数据服务未启用"}
+        )
+
+    # 只为自选股提供实时数据流
+    if not watchlist_db.is_in_watchlist(ticker):
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "NOT_IN_WATCHLIST", "message": f"{ticker} 不在自选股列表中，无法获取实时数据"}
+        )
+
+    async def event_generator():
+        """生成 SSE 事件"""
+        last_price = None
+
+        while True:
+            try:
+                # 获取最新价格
+                price_data = ws_manager.get_latest_price(ticker)
+
+                if price_data and (last_price is None or price_data.price != last_price):
+                    last_price = price_data.price
+                    yield {
+                        "event": "price",
+                        "data": json.dumps({
+                            "symbol": price_data.symbol,
+                            "price": price_data.price,
+                            "timestamp": price_data.timestamp.isoformat() if price_data.timestamp else None,
+                            "change": price_data.day_change,
+                            "change_pct": price_data.day_change_pct,
+                        })
+                    }
+
+                # 等待一小段时间再检查
+                await asyncio.sleep(0.2)
+
+            except asyncio.CancelledError:
+                logger.info(f"SSE 连接关闭: {ticker}")
+                break
+            except Exception as e:
+                logger.error(f"SSE 事件生成错误: {e}")
+                break
+
+    return EventSourceResponse(event_generator())
+
+
+@app.get("/v1/realtime/{ticker}")
+async def get_realtime_price(ticker: str):
+    """
+    获取实时价格（单次请求）
+
+    返回 WebSocket 缓存的最新价格，或从 REST API 获取。
+
+    参数:
+        ticker: 股票代码
+
+    返回:
+        最新价格数据
+    """
+    ticker = ticker.upper()
+    ws_manager = get_websocket_manager()
+
+    # 优先使用 WebSocket 缓存的价格
+    if ws_manager:
+        price_data = ws_manager.get_latest_price(ticker)
+        if price_data:
+            return {
+                "ticker": ticker,
+                "price": price_data.price,
+                "timestamp": price_data.timestamp.isoformat() if price_data.timestamp else None,
+                "change": price_data.day_change,
+                "change_pct": price_data.day_change_pct,
+                "source": "websocket",
+                "latency": "realtime"
+            }
+
+        # 如果没有缓存，尝试订阅
+        await ws_manager.subscribe(ticker)
+
+    # 回退到 REST API
+    try:
+        bars = provider.get_bars(ticker, "1m", "1d")
+        if bars:
+            latest = bars[-1]
+            return {
+                "ticker": ticker,
+                "price": latest.c,
+                "timestamp": latest.t.isoformat() if latest.t else None,
+                "open": latest.o,
+                "high": latest.h,
+                "low": latest.l,
+                "volume": latest.v,
+                "source": "rest",
+                "latency": f"{settings.cache_ttl}s"
+            }
+    except Exception as e:
+        logger.error(f"获取实时价格失败: {e}")
+
+    raise HTTPException(
+        status_code=404,
+        detail={"code": "NO_DATA", "message": f"无法获取 {ticker} 的价格数据"}
+    )

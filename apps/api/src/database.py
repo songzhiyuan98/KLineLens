@@ -322,3 +322,137 @@ def generate_eval_id() -> str:
     date_str = datetime.utcnow().strftime('%Y%m%d')
     short_uuid = uuid.uuid4().hex[:6]
     return f"eval_{date_str}_{short_uuid}"
+
+
+# ============ Watchlist Database ============
+
+@dataclass
+class WatchlistItem:
+    """Watchlist item"""
+    ticker: str
+    added_at: str  # ISO timestamp
+    note: Optional[str] = None
+
+
+class WatchlistDB:
+    """SQLite database for watchlist (WebSocket subscriptions)"""
+
+    MAX_ITEMS = 8  # TwelveData free plan limit
+
+    def __init__(self, db_path: Optional[str] = None):
+        """Initialize database connection"""
+        if db_path is None:
+            data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
+            os.makedirs(data_dir, exist_ok=True)
+            db_path = os.path.join(data_dir, 'klinelens.db')
+
+        self.db_path = db_path
+        self._init_db()
+
+    def _init_db(self):
+        """Create watchlist table if not exists"""
+        conn = sqlite3.connect(self.db_path)
+        try:
+            cursor = conn.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS watchlist (
+                    ticker TEXT PRIMARY KEY,
+                    added_at TEXT NOT NULL,
+                    note TEXT
+                )
+            ''')
+            conn.commit()
+        finally:
+            conn.close()
+
+    def list(self) -> List[WatchlistItem]:
+        """Get all watchlist items"""
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        try:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM watchlist ORDER BY added_at ASC')
+            rows = cursor.fetchall()
+            return [WatchlistItem(**dict(row)) for row in rows]
+        finally:
+            conn.close()
+
+    def count(self) -> int:
+        """Get watchlist count"""
+        conn = sqlite3.connect(self.db_path)
+        try:
+            cursor = conn.cursor()
+            cursor.execute('SELECT COUNT(*) FROM watchlist')
+            return cursor.fetchone()[0]
+        finally:
+            conn.close()
+
+    def get(self, ticker: str) -> Optional[WatchlistItem]:
+        """Get a single watchlist item"""
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        try:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM watchlist WHERE ticker = ?', (ticker.upper(),))
+            row = cursor.fetchone()
+            if row:
+                return WatchlistItem(**dict(row))
+            return None
+        finally:
+            conn.close()
+
+    def add(self, ticker: str, note: Optional[str] = None) -> tuple[bool, str]:
+        """
+        Add ticker to watchlist
+
+        Returns:
+            (success, message)
+        """
+        ticker = ticker.upper()
+
+        # Check if already exists
+        if self.get(ticker):
+            return False, f"{ticker} 已在自选股列表中"
+
+        # Check limit
+        if self.count() >= self.MAX_ITEMS:
+            return False, f"已达到 {self.MAX_ITEMS} 个上限，请先移除其他股票"
+
+        conn = sqlite3.connect(self.db_path)
+        try:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO watchlist (ticker, added_at, note)
+                VALUES (?, ?, ?)
+            ''', (ticker, datetime.utcnow().isoformat() + 'Z', note))
+            conn.commit()
+            return True, f"{ticker} 已添加到自选股"
+        except Exception as e:
+            return False, str(e)
+        finally:
+            conn.close()
+
+    def remove(self, ticker: str) -> tuple[bool, str]:
+        """
+        Remove ticker from watchlist
+
+        Returns:
+            (success, message)
+        """
+        ticker = ticker.upper()
+
+        if not self.get(ticker):
+            return False, f"{ticker} 不在自选股列表中"
+
+        conn = sqlite3.connect(self.db_path)
+        try:
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM watchlist WHERE ticker = ?', (ticker,))
+            conn.commit()
+            return True, f"{ticker} 已从自选股移除"
+        finally:
+            conn.close()
+
+    def is_in_watchlist(self, ticker: str) -> bool:
+        """Check if ticker is in watchlist"""
+        return self.get(ticker.upper()) is not None
