@@ -1,130 +1,148 @@
 /**
- * 设置页面
+ * 设置页面 - 简洁现代风格
  */
 
-import { Layout, Card } from '../components';
+import { Layout } from '../components';
 import { useI18n, Language } from '../lib/i18n';
 
-const styles = {
-  container: {
-    maxWidth: '600px',
-    margin: '0 auto',
-    padding: '2rem',
-  },
-  title: {
-    fontSize: '1.5rem',
-    fontWeight: 700,
-    marginBottom: '1.5rem',
-  },
-  section: {
-    marginTop: '1rem',
-  },
-  settingRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '0.75rem 0',
-    borderBottom: '1px solid #eaeaea',
-  },
-  settingLabel: {
-    fontSize: '0.875rem',
-    color: '#333',
-  },
-  langToggle: {
-    display: 'flex',
-    gap: '4px',
-  },
-  langButton: {
-    padding: '0.375rem 0.75rem',
-    border: '1px solid #eaeaea',
-    borderRadius: '4px',
-    fontSize: '0.75rem',
-    cursor: 'pointer',
-    backgroundColor: 'transparent',
-    color: '#666',
-    transition: 'all 0.2s',
-  },
-  langButtonActive: {
-    backgroundColor: '#26a69a',
-    borderColor: '#26a69a',
-    color: '#fff',
-  },
-  disclaimer: {
-    marginTop: '2rem',
-    padding: '1rem',
-    backgroundColor: '#fff3e0',
-    borderRadius: '8px',
-    fontSize: '0.75rem',
-    color: '#ff9800',
-  },
-  infoText: {
-    color: '#999',
-    fontSize: '0.875rem',
-  },
-  aboutInfo: {
-    fontSize: '0.875rem',
-    color: '#666',
-  },
+// Fluid typography
+const F = {
+  small: 'clamp(0.75rem, 0.65rem + 0.2vw, 0.875rem)',
+  body: 'clamp(0.875rem, 0.75rem + 0.25vw, 1rem)',
+  heading: 'clamp(1.25rem, 1rem + 0.5vw, 1.5rem)',
 };
+
+const MONO = '"SF Mono", "Roboto Mono", "Fira Code", Menlo, Monaco, monospace';
 
 export default function Settings() {
   const { lang, setLang, t } = useI18n();
 
-  const handleLangChange = (newLang: Language) => {
-    setLang(newLang);
-  };
-
   return (
     <Layout>
-      <div style={styles.container}>
-        <h1 style={styles.title}>{t('settings')}</h1>
+      <div style={{
+        maxWidth: '560px',
+        margin: '0 auto',
+        padding: 'clamp(1.5rem, 4vw, 3rem) clamp(1rem, 3vw, 2rem)',
+      }}>
+        {/* Header */}
+        <h1 style={{
+          fontSize: F.heading,
+          fontWeight: 600,
+          marginBottom: 'clamp(2rem, 4vw, 3rem)',
+          color: '#000',
+        }}>
+          {t('settings')}
+        </h1>
 
-        <Card title={t('general')}>
-          <div style={styles.settingRow}>
-            <span style={styles.settingLabel}>{t('language')}</span>
-            <div style={styles.langToggle}>
+        {/* Language Setting */}
+        <section style={{ marginBottom: '2.5rem' }}>
+          <div style={{
+            fontSize: 'clamp(0.625rem, 0.5rem + 0.2vw, 0.75rem)',
+            fontWeight: 500,
+            color: '#999',
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            marginBottom: '0.75rem',
+          }}>
+            {t('language')}
+          </div>
+
+          <div style={{
+            display: 'flex',
+            gap: '0.5rem',
+          }}>
+            {(['zh', 'en'] as Language[]).map((l) => (
               <button
-                onClick={() => handleLangChange('zh')}
+                key={l}
+                onClick={() => setLang(l)}
                 style={{
-                  ...styles.langButton,
-                  ...(lang === 'zh' ? styles.langButtonActive : {}),
+                  padding: '0.625rem 1.25rem',
+                  fontSize: F.small,
+                  fontWeight: 500,
+                  border: '1px solid',
+                  borderColor: lang === l ? '#000' : '#e5e5e5',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  backgroundColor: lang === l ? '#000' : '#fff',
+                  color: lang === l ? '#fff' : '#666',
+                  transition: 'all 0.15s',
                 }}
               >
-                {t('chinese')}
+                {l === 'zh' ? '中文' : 'English'}
               </button>
-              <button
-                onClick={() => handleLangChange('en')}
-                style={{
-                  ...styles.langButton,
-                  ...(lang === 'en' ? styles.langButtonActive : {}),
-                }}
-              >
-                {t('english')}
-              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* About */}
+        <section style={{ marginBottom: '2.5rem' }}>
+          <div style={{
+            fontSize: 'clamp(0.625rem, 0.5rem + 0.2vw, 0.75rem)',
+            fontWeight: 500,
+            color: '#999',
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            marginBottom: '0.75rem',
+          }}>
+            {t('about')}
+          </div>
+
+          <div style={{
+            padding: '1rem 1.25rem',
+            backgroundColor: '#fafafa',
+            borderRadius: '8px',
+            border: '1px solid #f0f0f0',
+          }}>
+            <div style={{
+              fontSize: F.body,
+              fontWeight: 600,
+              color: '#000',
+              marginBottom: '0.375rem',
+            }}>
+              KLineLens
+            </div>
+            <div style={{
+              fontSize: F.small,
+              color: '#666',
+              marginBottom: '0.5rem',
+            }}>
+              {t('app_description')}
+            </div>
+            <div style={{
+              fontSize: F.small,
+              fontFamily: MONO,
+              color: '#999',
+            }}>
+              v0.2.0
             </div>
           </div>
-          <p style={{ ...styles.infoText, marginTop: '1rem' }}>
-            {t('settings_future')}
-          </p>
-        </Card>
+        </section>
 
-        <div style={styles.section}>
-          <Card title={t('about')}>
-            <div style={styles.aboutInfo}>
-              <p><strong>KLineLens</strong></p>
-              <p style={{ marginTop: '0.5rem' }}>
-                {t('app_description')}
-              </p>
-              <p style={{ marginTop: '0.5rem', color: '#999' }}>
-                {t('version')} 0.2.0
-              </p>
-            </div>
-          </Card>
-        </div>
+        {/* Disclaimer */}
+        <section>
+          <div style={{
+            fontSize: 'clamp(0.625rem, 0.5rem + 0.2vw, 0.75rem)',
+            fontWeight: 500,
+            color: '#999',
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            marginBottom: '0.75rem',
+          }}>
+            {t('disclaimer')}
+          </div>
 
-        <div style={styles.disclaimer}>
-          <strong>{t('disclaimer')}:</strong> {t('disclaimer_text')}
-        </div>
+          <div style={{
+            fontSize: F.small,
+            lineHeight: 1.6,
+            color: '#666',
+            padding: '1rem 1.25rem',
+            backgroundColor: '#fff',
+            borderRadius: '8px',
+            border: '1px solid #e5e5e5',
+          }}>
+            {t('disclaimer_text')}
+          </div>
+        </section>
       </div>
     </Layout>
   );

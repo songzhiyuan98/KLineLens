@@ -153,7 +153,7 @@ const translations: Record<Language, Record<string, string>> = {
     'settings_future': '更多设置功能将在未来版本中提供。',
     'app_description': '市场结构分析终端',
     'disclaimer': '免责声明',
-    'disclaimer_text': '本工具仅供教育目的使用，不提供投资建议。在做出任何投资决策之前，请务必自行研究。',
+    'disclaimer_text': '本工具仅用于技术分析学习，不构成任何投资建议。市场有风险，投资需谨慎。',
 
     // Evidence 提示
     'click_to_locate': '点击定位到图表',
@@ -624,7 +624,7 @@ const translations: Record<Language, Record<string, string>> = {
     'settings_future': 'More settings will be available in future updates.',
     'app_description': 'Market Structure Analysis Terminal',
     'disclaimer': 'Disclaimer',
-    'disclaimer_text': 'This tool is for educational purposes only. It does not provide financial advice. Always do your own research before making any investment decisions.',
+    'disclaimer_text': 'For educational purposes only. Not financial advice. Trade at your own risk.',
 
     // Evidence hint
     'click_to_locate': 'Click to locate on chart',

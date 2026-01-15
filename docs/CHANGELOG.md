@@ -8,6 +8,51 @@ N/A
 
 ---
 
+## [0.7.0] - 2026-01-15
+
+### Added
+- **Responsive Design** - Fluid typography and dynamic layouts:
+  - CSS `clamp()` for all font sizes (scales with viewport width)
+  - Dynamic chart height (280-550px, ~45% of viewport height)
+  - Right panel fonts scale proportionally on larger screens
+  - Settings page responsive typography
+
+- **Smart Chart Visible Range** - Timeframe-specific context windows:
+  - 1m: 120 bars (~2 hours) - execution level
+  - 5m: 78 bars (~1 trading day) - structure level
+  - 1d: 20 bars (~1 month) - trend level
+
+- **Homepage Redesign** - Minimal search-focused design:
+  - Pure black/white color scheme
+  - Large centered search box with rounded corners (12px)
+  - Recent tickers from localStorage (max 6)
+  - Removed category-based recommendations
+
+### Changed
+- **Settings Page** - Simplified modern design:
+  - Removed Card components, using native sections
+  - Modern button-style language toggle (selected = black bg)
+  - Shorter disclaimer text (CN/EN)
+- **Layout** - Removed footer from all pages
+- **Disclaimer** - Simplified text:
+  - CN: "本工具仅用于技术分析学习，不构成任何投资建议。市场有风险，投资需谨慎。"
+  - EN: "For educational purposes only. Not financial advice. Trade at your own risk."
+
+### Fixed
+- **Price Lines Duplication** - Fixed R1/R2/S1/S2 lines duplicating when switching timeframes
+  - Added `priceLinesRef` to track and clean up old lines before creating new ones
+
+### Technical
+- `[ticker].tsx`: Added fluid typography scale `F` object with 6 size levels
+- `[ticker].tsx`: Added `chartHeight` state with viewport-based calculation
+- `CandlestickChart.tsx`: Added `priceLinesRef` for price line cleanup
+- `CandlestickChart.tsx`: Smart visible range using `setVisibleLogicalRange()`
+- `index.tsx`: Complete rewrite for minimal homepage with localStorage recent tickers
+- `settings.tsx`: Rewritten with responsive design
+- `Layout.tsx`: Removed footer section
+
+---
+
 ## [0.6.0] - 2026-01-14
 
 ### Added

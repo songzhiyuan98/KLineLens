@@ -65,6 +65,24 @@ const C = {
   warn: '#d97706',
 };
 
+// ============ Fluid Typography Scale ============
+// Using clamp() for responsive fonts: clamp(min, preferred, max)
+// Scales up on larger viewports (fullscreen), stays readable on smaller ones
+const F = {
+  // Tiny: status strip, labels
+  tiny: 'clamp(0.5625rem, 0.5rem + 0.15vw, 0.6875rem)',
+  // Small: secondary text, meta
+  small: 'clamp(0.625rem, 0.55rem + 0.2vw, 0.8125rem)',
+  // Body: main text
+  body: 'clamp(0.6875rem, 0.6rem + 0.2vw, 0.875rem)',
+  // Medium: section content
+  medium: 'clamp(0.75rem, 0.65rem + 0.25vw, 0.9375rem)',
+  // Large: emphasis, values
+  large: 'clamp(0.875rem, 0.75rem + 0.3vw, 1.125rem)',
+  // Heading: ticker, price
+  heading: 'clamp(1.375rem, 1.1rem + 0.6vw, 1.875rem)',
+};
+
 // ============ Styles ============
 const s: Record<string, React.CSSProperties> = {
   page: {
@@ -79,7 +97,7 @@ const s: Record<string, React.CSSProperties> = {
     backgroundColor: '#fafafa',
     borderBottom: `1px solid ${C.dividerLight}`,
     padding: '0.375rem 0',
-    fontSize: '0.5625rem',
+    fontSize: F.tiny,
     fontFamily: MONO,
     color: '#b0b0b0',
   },
@@ -138,20 +156,20 @@ const s: Record<string, React.CSSProperties> = {
     gap: '1rem',
   },
   ticker: {
-    fontSize: '1.375rem',
+    fontSize: F.heading,
     fontWeight: 700,
     letterSpacing: '-0.02em',
     color: C.text,
   },
   price: {
-    fontSize: '1.375rem',
+    fontSize: F.heading,
     fontWeight: 600,
     fontFamily: MONO,
     fontVariantNumeric: 'tabular-nums',
     color: C.text,
   },
   change: {
-    fontSize: '0.875rem',
+    fontSize: F.large,
     fontFamily: MONO,
     fontVariantNumeric: 'tabular-nums',
     fontWeight: 500,
@@ -171,7 +189,7 @@ const s: Record<string, React.CSSProperties> = {
   },
   tfBtn: {
     padding: '0.375rem 0.75rem',
-    fontSize: '0.6875rem',
+    fontSize: F.body,
     fontWeight: 500,
     fontFamily: MONO,
     border: 'none',
@@ -185,7 +203,7 @@ const s: Record<string, React.CSSProperties> = {
     color: C.bg,
   },
   tfLabel: {
-    fontSize: '0.5625rem',
+    fontSize: F.tiny,
     color: C.textMuted,
     marginRight: '0.25rem',
     textTransform: 'uppercase',
@@ -221,7 +239,7 @@ const s: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     gap: '0.375rem',
-    fontSize: '0.75rem',
+    fontSize: F.medium,
   },
   chartStatusLabel: {
     color: C.textMuted,
@@ -256,7 +274,7 @@ const s: Record<string, React.CSSProperties> = {
     borderBottom: 'none',
   },
   sectionTitle: {
-    fontSize: '0.5rem',
+    fontSize: F.tiny,
     fontWeight: 500,
     color: '#b0b0b0',
     textTransform: 'uppercase' as const,
@@ -277,21 +295,21 @@ const s: Record<string, React.CSSProperties> = {
     gap: '0.5rem',
   },
   summaryLabel: {
-    fontSize: '0.6875rem',
+    fontSize: F.body,
     color: '#888',
   },
   summaryValueSmall: {
-    fontSize: '0.6875rem',
+    fontSize: F.body,
     fontFamily: MONO,
     color: C.text,
   },
   summaryValueLarge: {
-    fontSize: '0.875rem',
+    fontSize: F.large,
     fontFamily: MONO,
     fontWeight: 600,
   },
   summaryMuted: {
-    fontSize: '0.625rem',
+    fontSize: F.small,
     color: '#999',
     marginLeft: '0.25rem',
   },
@@ -300,7 +318,7 @@ const s: Record<string, React.CSSProperties> = {
     fontWeight: 600,
   },
   decisionTrigger: {
-    fontSize: '0.6875rem',
+    fontSize: F.body,
     color: C.textSecondary,
   },
   summaryAction: {
@@ -311,7 +329,7 @@ const s: Record<string, React.CSSProperties> = {
     padding: '0.375rem 0.625rem',
     backgroundColor: C.dividerLight,
     borderRadius: '3px',
-    fontSize: '0.75rem',
+    fontSize: F.medium,
     fontWeight: 500,
     color: C.text,
   },
@@ -333,14 +351,14 @@ const s: Record<string, React.CSSProperties> = {
     transition: 'background-color 0.1s',
   },
   timelineTime: {
-    fontSize: '0.6875rem',
+    fontSize: F.body,
     fontFamily: MONO,
     color: C.textMuted,
     fontVariantNumeric: 'tabular-nums',
     flexShrink: 0,
   },
   timelineText: {
-    fontSize: '0.6875rem',
+    fontSize: F.body,
     color: C.textSecondary,
     lineHeight: 1.4,
     textAlign: 'right' as const,
@@ -348,7 +366,7 @@ const s: Record<string, React.CSSProperties> = {
 
   // Breakout section
   breakoutState: {
-    fontSize: '0.875rem',
+    fontSize: F.large,
     fontWeight: 600,
     marginBottom: '0.625rem',
   },
@@ -360,7 +378,7 @@ const s: Record<string, React.CSSProperties> = {
   factorRow: {
     display: 'flex',
     alignItems: 'center',
-    fontSize: '0.75rem',
+    fontSize: F.medium,
     fontFamily: MONO,
     fontVariantNumeric: 'tabular-nums',
   },
@@ -371,7 +389,7 @@ const s: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '0.625rem',
+    fontSize: F.small,
     borderRadius: '2px',
     border: `1px solid ${C.divider}`,
     color: C.textMuted,
@@ -398,18 +416,18 @@ const s: Record<string, React.CSSProperties> = {
     marginBottom: '0.5rem',
   },
   behaviorName: {
-    fontSize: '0.875rem',
+    fontSize: F.large,
     fontWeight: 600,
     color: C.text,
   },
   behaviorProb: {
-    fontSize: '0.75rem',
+    fontSize: F.medium,
     fontFamily: MONO,
     fontVariantNumeric: 'tabular-nums',
     color: C.textMuted,
   },
   behaviorSecondary: {
-    fontSize: '0.75rem',
+    fontSize: F.medium,
     color: C.textMuted,
     marginBottom: '0.625rem',
   },
@@ -422,7 +440,7 @@ const s: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'flex-start',
     gap: '0.375rem',
-    fontSize: '0.75rem',
+    fontSize: F.medium,
     color: C.textSecondary,
     padding: '0.25rem 0',
     cursor: 'pointer',
@@ -434,13 +452,13 @@ const s: Record<string, React.CSSProperties> = {
   evidenceBullet: {
     color: C.textMuted,
     marginTop: '0.0625rem',
-    fontSize: '0.625rem',
+    fontSize: F.small,
   },
 
   // Zones section (table)
   zonesTable: {
     width: '100%',
-    fontSize: '0.75rem',
+    fontSize: F.medium,
     fontFamily: MONO,
     fontVariantNumeric: 'tabular-nums',
   },
@@ -448,7 +466,7 @@ const s: Record<string, React.CSSProperties> = {
     display: 'grid',
     gridTemplateColumns: '1fr 36px 1fr',
     gap: '0.5rem',
-    fontSize: '0.5625rem',
+    fontSize: F.tiny,
     fontWeight: 500,
     color: C.textMuted,
     textTransform: 'uppercase' as const,
@@ -486,19 +504,19 @@ const s: Record<string, React.CSSProperties> = {
     marginBottom: '0.375rem',
   },
   planLabel: {
-    fontSize: '0.625rem',
+    fontSize: F.small,
     fontWeight: 600,
     color: C.textMuted,
   },
   planName: {
-    fontSize: '0.75rem',
+    fontSize: F.medium,
     color: C.textSecondary,
   },
   planLevels: {
     display: 'grid',
     gridTemplateColumns: 'auto 1fr',
     gap: '0.125rem 0.75rem',
-    fontSize: '0.75rem',
+    fontSize: F.medium,
     fontFamily: MONO,
     fontVariantNumeric: 'tabular-nums',
   },
@@ -525,7 +543,7 @@ const s: Record<string, React.CSSProperties> = {
   },
   bottomTab: {
     padding: '0.75rem 1.25rem',
-    fontSize: '0.6875rem',
+    fontSize: F.body,
     fontWeight: 500,
     color: C.textMuted,
     background: 'transparent',
@@ -559,7 +577,7 @@ const s: Record<string, React.CSSProperties> = {
   },
   filterBtn: {
     padding: '0.25rem 0.5rem',
-    fontSize: '0.625rem',
+    fontSize: F.small,
     fontWeight: 500,
     border: 'none',
     background: 'transparent',
@@ -582,7 +600,7 @@ const s: Record<string, React.CSSProperties> = {
     display: 'grid',
     gridTemplateColumns: '80px 80px 60px 1fr',
     gap: '1rem',
-    fontSize: '0.5625rem',
+    fontSize: F.tiny,
     fontWeight: 500,
     color: C.textMuted,
     textTransform: 'uppercase' as const,
@@ -596,23 +614,23 @@ const s: Record<string, React.CSSProperties> = {
     gridTemplateColumns: '80px 80px 60px 1fr',
     gap: '1rem',
     padding: '0.5rem 0',
-    fontSize: '0.75rem',
+    fontSize: F.medium,
     borderBottom: `1px solid ${C.dividerLight}`,
     cursor: 'pointer',
   },
   evidenceType: {
     fontWeight: 500,
     fontFamily: MONO,
-    fontSize: '0.6875rem',
+    fontSize: F.body,
   },
   evidenceSeverity: {
     fontFamily: MONO,
-    fontSize: '0.6875rem',
+    fontSize: F.body,
   },
   evidenceMetrics: {
     fontFamily: MONO,
     fontVariantNumeric: 'tabular-nums',
-    fontSize: '0.6875rem',
+    fontSize: F.body,
     color: C.textMuted,
   },
 
@@ -624,7 +642,7 @@ const s: Record<string, React.CSSProperties> = {
   },
   volumeSection: {},
   volumeSectionTitle: {
-    fontSize: '0.625rem',
+    fontSize: F.small,
     fontWeight: 600,
     color: C.textMuted,
     textTransform: 'uppercase' as const,
@@ -643,7 +661,7 @@ const s: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '0.625rem',
+    fontSize: F.small,
     color: C.textMuted,
     backgroundColor: C.bg,
   },
@@ -664,7 +682,7 @@ const s: Record<string, React.CSSProperties> = {
   volumeStat: {
     display: 'flex',
     justifyContent: 'space-between',
-    fontSize: '0.75rem',
+    fontSize: F.medium,
     fontFamily: MONO,
     fontVariantNumeric: 'tabular-nums',
   },
@@ -688,7 +706,7 @@ const s: Record<string, React.CSSProperties> = {
   },
   errorMsg: {
     color: C.textMuted,
-    fontSize: '0.8125rem',
+    fontSize: F.large,
     marginBottom: '1rem',
   },
   retryBtn: {
@@ -698,7 +716,7 @@ const s: Record<string, React.CSSProperties> = {
     borderRadius: '4px',
     color: C.bg,
     cursor: 'pointer',
-    fontSize: '0.8125rem',
+    fontSize: F.large,
     fontWeight: 500,
   },
 
@@ -717,14 +735,14 @@ const s: Record<string, React.CSSProperties> = {
     marginBottom: '0.75rem',
   },
   narrativeTitle: {
-    fontSize: '0.625rem',
+    fontSize: F.small,
     fontWeight: 500,
     color: '#888',
     textTransform: 'uppercase' as const,
     letterSpacing: '0.1em',
   },
   narrativeQuality: {
-    fontSize: '0.5625rem',
+    fontSize: F.tiny,
     padding: '0.125rem 0.375rem',
     borderRadius: '3px',
     fontWeight: 500,
@@ -739,7 +757,7 @@ const s: Record<string, React.CSSProperties> = {
   },
   generateBtn: {
     padding: '0.375rem 0.75rem',
-    fontSize: '0.6875rem',
+    fontSize: F.body,
     fontWeight: 500,
     backgroundColor: C.text,
     color: C.bg,
@@ -753,7 +771,7 @@ const s: Record<string, React.CSSProperties> = {
     cursor: 'not-allowed',
   },
   narrativeContent: {
-    fontSize: '0.8125rem',
+    fontSize: F.large,
     lineHeight: 1.6,
     color: C.text,
   },
@@ -767,7 +785,7 @@ const s: Record<string, React.CSSProperties> = {
     padding: '0.375rem 0.625rem',
     backgroundColor: C.dividerLight,
     borderRadius: '4px',
-    fontSize: '0.75rem',
+    fontSize: F.medium,
     fontWeight: 600,
     marginBottom: '0.75rem',
   },
@@ -777,7 +795,7 @@ const s: Record<string, React.CSSProperties> = {
   narrativeWhyList: {
     margin: 0,
     padding: '0 0 0 1rem',
-    fontSize: '0.75rem',
+    fontSize: F.medium,
     color: C.textSecondary,
     marginBottom: '0.75rem',
   },
@@ -785,7 +803,7 @@ const s: Record<string, React.CSSProperties> = {
     marginBottom: '0.25rem',
   },
   narrativePlaybook: {
-    fontSize: '0.75rem',
+    fontSize: F.medium,
     color: C.textSecondary,
     whiteSpace: 'pre-wrap' as const,
     marginBottom: '0.75rem',
@@ -795,7 +813,7 @@ const s: Record<string, React.CSSProperties> = {
     border: `1px solid ${C.dividerLight}`,
   },
   narrativeRisks: {
-    fontSize: '0.6875rem',
+    fontSize: F.body,
     color: C.warn,
     padding: '0.5rem',
     backgroundColor: '#fffbeb',
@@ -809,13 +827,13 @@ const s: Record<string, React.CSSProperties> = {
     marginBottom: '0.25rem',
   },
   narrativeEmpty: {
-    fontSize: '0.75rem',
+    fontSize: F.medium,
     color: C.textMuted,
     textAlign: 'center' as const,
     padding: '1rem 0',
   },
   narrativeError: {
-    fontSize: '0.75rem',
+    fontSize: F.medium,
     color: C.bearish,
     textAlign: 'center' as const,
     padding: '0.5rem',
@@ -882,6 +900,7 @@ export default function TickerDetail() {
   const [showAllZones, setShowAllZones] = useState(false);
   const [highlightedBarTime, setHighlightedBarTime] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [chartHeight, setChartHeight] = useState(380);
 
   // Daily cached evidence and timeline
   const [cachedEvidence, setCachedEvidence] = useState<Evidence[]>([]);
@@ -917,6 +936,21 @@ export default function TickerDetail() {
 
   // 获取当前周期的 narrative
   const currentNarrative = narrativeCache[timeframe];
+
+  // Dynamic chart height based on viewport
+  // Min: 280px, Max: 550px, scales with viewport height
+  useEffect(() => {
+    const updateChartHeight = () => {
+      const vh = window.innerHeight;
+      // Use ~45% of viewport height, clamped between 280-550
+      const height = Math.min(550, Math.max(280, Math.round(vh * 0.45)));
+      setChartHeight(height);
+    };
+
+    updateChartHeight();
+    window.addEventListener('resize', updateChartHeight);
+    return () => window.removeEventListener('resize', updateChartHeight);
+  }, []);
 
   // 加载单个周期的 narrative
   const loadNarrative = useCallback(async (tf: Timeframe) => {
@@ -1623,7 +1657,7 @@ export default function TickerDetail() {
                       bars={bars || []}
                       supportZones={supportZones}
                       resistanceZones={resistanceZones}
-                      height={380}
+                      height={chartHeight}
                       showVolume={true}
                       highlightedBarTime={highlightedBarTime}
                       onClearHighlight={() => setHighlightedBarTime(null)}

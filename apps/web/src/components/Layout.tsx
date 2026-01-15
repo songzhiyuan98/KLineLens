@@ -51,18 +51,6 @@ export default function Layout({ children }: LayoutProps) {
       <main style={{ flex: 1 }}>
         {children}
       </main>
-
-      {/* 页脚 */}
-      <footer style={{
-        backgroundColor: '#fff',
-        borderTop: '1px solid #eaeaea',
-        padding: '1rem 3rem',
-        textAlign: 'center',
-        fontSize: '0.75rem',
-        color: '#999',
-      }}>
-        KLineLens - Market Structure Analysis Terminal
-      </footer>
     </div>
   );
 }

@@ -254,22 +254,40 @@
 
 ---
 
-## Milestone 9: Enhanced UI + Signal Evaluation (Current)
+## Milestone 9: Responsive Design + UI Polish ✅
 
 ### Tasks
-- [ ] Playbook 表格化显示
-  - [ ] 一行表格格式（方向 | 入场 | 目标 | 止损 | R:R | 条件 | 风险）
-  - [ ] Plan A / Plan B 并排显示
-  - [ ] 颜色区分 LONG/SHORT
-- [ ] Evidence 增强
-  - [ ] 添加时间戳显示（何时发生）
-  - [ ] 每日缓存（localStorage）
-  - [ ] 进入页面自动加载缓存
-  - [ ] 每日清理一次（按日期判断）
-- [ ] Timeline 每日缓存
-  - [ ] localStorage 缓存策略
-  - [ ] 进入页面自动加载
-  - [ ] 每日清理机制
+- [x] 响应式设计 (2026-01-15)
+  - [x] 详情页流体排版 (clamp())
+  - [x] 图表高度动态调整 (280-550px, 45% vh)
+  - [x] 右侧面板字体缩放
+- [x] 首页简化 (2026-01-15)
+  - [x] 纯黑白设计
+  - [x] 大搜索框居中
+  - [x] 最近访问记录 (localStorage)
+  - [x] 移除推荐分类
+- [x] 设置页面优化 (2026-01-15)
+  - [x] 简洁现代风格
+  - [x] 响应式字体
+  - [x] 免责声明简化
+- [x] 移除页脚 (2026-01-15)
+- [x] 智能图表可视范围 (2026-01-15)
+  - [x] 1m: 120 bars (2小时)
+  - [x] 5m: 78 bars (1交易日)
+  - [x] 1d: 20 bars (1个月)
+- [x] 修复价格线重复问题 (2026-01-15)
+
+### Acceptance ✅
+- 全屏时字体自动放大
+- 图表高度随视口调整
+- 首页简洁现代
+- 设置页面响应式
+
+---
+
+## Milestone 10: Enhanced Features (Current)
+
+### Tasks
 - [ ] Signal Evaluation（信号评估）功能
   - [ ] 新增数据库表存储预测记录
   - [ ] POST /v1/signal-evaluation API（记录预测）
@@ -278,17 +296,15 @@
   - [ ] 前端信号评估 Tab（与 Playbook 切换）
   - [ ] 表格显示：时间 | 预测 | 实际 | 结果 | 原因
   - [ ] 正确率统计展示
-- [ ] 事件驱动的自动短评（迁移自 M8）
+- [ ] 事件驱动的自动短评
   - [ ] regime shift 触发
   - [ ] breakout state change 触发
   - [ ] behavior delta >= 12% 触发
 
 ### Acceptance
-- Playbook 以表格形式显示，信息一目了然
-- Evidence 和 Timeline 进入页面自动加载缓存数据
-- 缓存数据每天自动清理
 - Signal Evaluation 可记录预测并跟踪结果
 - 正确率统计准确显示
+- 自动短评触发正常
 
 ---
 
@@ -323,3 +339,11 @@
 - [x] Playbook UI Enhancement (方向/R:R/条件/风险) (2026-01-14)
 - [x] Playbook/Timeline 位置互换 (2026-01-14)
 - [x] K线图本地时间显示 (2026-01-14)
+- [x] Milestone 9: Responsive Design + UI Polish (2026-01-15)
+  - [x] 流体排版 (clamp())
+  - [x] 动态图表高度
+  - [x] 首页简化重设计
+  - [x] 设置页面优化
+  - [x] 移除页脚
+  - [x] 智能图表可视范围
+  - [x] 修复价格线重复
