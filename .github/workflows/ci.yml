@@ -104,7 +104,7 @@ jobs:
       - name: Build API image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./apps/api
           file: ./apps/api/Dockerfile
           push: false
           cache-from: type=gha
@@ -113,7 +113,7 @@ jobs:
       - name: Build Web image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./apps/web
           file: ./apps/web/Dockerfile
           push: false
           cache-from: type=gha
