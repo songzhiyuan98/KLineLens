@@ -13,7 +13,6 @@
 </p>
 
 <p align="center">
-  <a href="https://klinelens.com" target="_blank"><strong>🌐 Live Demo</strong></a> •
   <a href="#-quick-start">Quick Start</a> •
   <a href="#-features">Features</a> •
   <a href="#-custom-strategies">Custom Strategies</a> •
