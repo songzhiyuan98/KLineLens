@@ -359,7 +359,7 @@ const translations: Record<Language, Record<string, string>> = {
 
     // Bottom Panel Tabs
     'tab_timeline': '时间线',
-    'tab_playbook': '交易剧本',
+    'tab_playbook': '交易策略',
     'tab_evidence': '证据',
 
     // Evidence Table
@@ -461,6 +461,24 @@ const translations: Record<Language, Record<string, string>> = {
 
     // Signal Evaluation
     'tab_signal_eval': '信号评估',
+
+    // Strategy Settings
+    'strategy_type': '策略类型',
+    'strategy_playbook': '交易剧本',
+    'strategy_0dte': '0DTE 策略',
+    'strategy_playbook_desc': '基于结构分析的条件入场计划。适合日内/波段交易，提供明确的入场条件、目标位和止损位。当价格到达关键位且满足条件时触发。',
+    'strategy_0dte_desc': '当日期权交易状态机。专为 0DTE 期权设计，实时跟踪市场状态（等待→观察→就绪→入场→持仓→减仓→退出），自动管理仓位生命周期。',
+    'strategy_type_desc': '选择将影响交易策略面板显示的内容',
+
+    // 0DTE Status Translations
+    'status_WAIT': '等待',
+    'status_WATCH': '观察',
+    'status_ARMED': '就绪',
+    'status_ENTER': '入场',
+    'status_HOLD': '持仓',
+    'status_TRIM': '减仓',
+    'status_EXIT': '退出',
+    'outside_trading_hours': '非交易时段',
     'signal_evaluation': '信号评估',
     'accuracy_rate': '准确率',
     'total_predictions': '总预测',
@@ -879,7 +897,7 @@ const translations: Record<Language, Record<string, string>> = {
 
     // Bottom Panel Tabs
     'tab_timeline': 'Timeline',
-    'tab_playbook': 'Playbook',
+    'tab_playbook': 'Trade Strategy',
     'tab_evidence': 'Evidence',
 
     // Evidence Table
@@ -981,6 +999,24 @@ const translations: Record<Language, Record<string, string>> = {
 
     // Signal Evaluation
     'tab_signal_eval': 'Evaluation',
+
+    // Strategy Settings
+    'strategy_type': 'Strategy Type',
+    'strategy_playbook': 'Playbook',
+    'strategy_0dte': '0DTE Strategy',
+    'strategy_playbook_desc': 'Conditional entry plans based on structure analysis. Ideal for intraday/swing trading with clear entry conditions, targets, and stops. Triggers when price reaches key levels with conditions met.',
+    'strategy_0dte_desc': '0DTE options trading state machine. Designed for same-day expiry options, tracks market state in real-time (WAIT→WATCH→ARMED→ENTER→HOLD→TRIM→EXIT) with automated position lifecycle management.',
+    'strategy_type_desc': 'Choose what the Trade Strategy panel will display',
+
+    // 0DTE Status Translations
+    'status_WAIT': 'WAIT',
+    'status_WATCH': 'WATCH',
+    'status_ARMED': 'ARMED',
+    'status_ENTER': 'ENTER',
+    'status_HOLD': 'HOLD',
+    'status_TRIM': 'TRIM',
+    'status_EXIT': 'EXIT',
+    'outside_trading_hours': 'Outside trading hours',
     'signal_evaluation': 'Signal Evaluation',
     'accuracy_rate': 'Accuracy',
     'total_predictions': 'Total',

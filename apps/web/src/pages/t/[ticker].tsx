@@ -26,6 +26,8 @@ import {
   SignalEvaluationsResponse,
   fetchSignalEvaluations,
   updateSignalEvaluation,
+  fetchSimTradePlan,
+  SimTradeResponse,
 } from '../../lib/api';
 import {
   loadCachedEvidence,
@@ -35,6 +37,7 @@ import {
   saveCachedTimeline,
   mergeTimeline,
 } from '../../lib/cache';
+// SimTradeTable component no longer used - 0DTE rendering integrated into playbook section
 
 const CandlestickChart = dynamic(
   () => import('../../components/CandlestickChart'),
@@ -44,6 +47,7 @@ const CandlestickChart = dynamic(
 type Timeframe = '1m' | '5m' | '1d';
 type BottomTab = 'playbook' | 'signal_eval' | 'evidence' | 'volume';
 type TimelineFilter = 'all' | 'structure' | 'volume' | 'breakout';
+type StrategyType = 'playbook' | '0dte';
 
 const VOLUME_THRESHOLD = 1.8;
 const RESULT_THRESHOLD = 0.6;
@@ -924,6 +928,22 @@ export default function TickerDetail() {
   const [signalEvaluations, setSignalEvaluations] = useState<SignalEvaluationsResponse | null>(null);
   const [evalLoading, setEvalLoading] = useState(false);
 
+  // Sim Trade Plan
+  const [simTradeData, setSimTradeData] = useState<SimTradeResponse | null>(null);
+  const [simTradeLoading, setSimTradeLoading] = useState(false);
+  const [simTradeError, setSimTradeError] = useState<string | null>(null);
+
+  // Strategy type (playbook vs 0dte)
+  const [strategyType, setStrategyType] = useState<StrategyType>('playbook');
+
+  // Load strategy type from localStorage
+  useEffect(() => {
+    const savedType = localStorage.getItem('klens_strategy_type') as StrategyType;
+    if (savedType === 'playbook' || savedType === '0dte') {
+      setStrategyType(savedType);
+    }
+  }, []);
+
   const { bars, error: barsError, isLoading: barsLoading } = useBars(
     ticker as string, timeframe, { refreshInterval: 60000 }
   );
@@ -1184,6 +1204,49 @@ export default function TickerDetail() {
     };
 
     loadEvaluations();
+  }, [ticker, timeframe]);
+
+  // Load sim trade plan (only for 1m/5m timeframes)
+  useEffect(() => {
+    if (!ticker || (timeframe !== '1m' && timeframe !== '5m')) {
+      setSimTradeData(null);
+      return;
+    }
+
+    const tickerStr = ticker as string;
+
+    const loadSimTrade = async () => {
+      setSimTradeLoading(true);
+      setSimTradeError(null);
+      try {
+        const data = await fetchSimTradePlan(tickerStr, timeframe);
+        setSimTradeData(data);
+      } catch (error) {
+        console.error('Failed to load sim trade plan:', error);
+        setSimTradeError(error instanceof Error ? error.message : 'Unknown error');
+      } finally {
+        setSimTradeLoading(false);
+      }
+    };
+
+    loadSimTrade();
+  }, [ticker, timeframe]);
+
+  // Refresh sim trade plan callback
+  const refreshSimTrade = useCallback(async () => {
+    if (!ticker || (timeframe !== '1m' && timeframe !== '5m')) return;
+
+    setSimTradeLoading(true);
+    setSimTradeError(null);
+    try {
+      const data = await fetchSimTradePlan(ticker as string, timeframe);
+      setSimTradeData(data);
+    } catch (error) {
+      console.error('Failed to refresh sim trade plan:', error);
+      setSimTradeError(error instanceof Error ? error.message : 'Unknown error');
+    } finally {
+      setSimTradeLoading(false);
+    }
   }, [ticker, timeframe]);
 
   // Computed values - prefer realtime price when available
@@ -1881,17 +1944,16 @@ export default function TickerDetail() {
                     </div>
 
                     <div style={s.bottomContent}>
-                      {/* Playbook Tab - Table Format */}
+                      {/* Playbook / 0DTE Strategy Tab - Conditional based on strategyType */}
                       {bottomTab === 'playbook' && (
                         <div style={{ padding: '0.5rem 0' }}>
-                          {analysis.playbook.length === 0 ? (
-                            <div style={{ color: C.textMuted, fontSize: '0.75rem' }}>{t('no_executable_plans')}</div>
-                          ) : (
+                          {/* 0DTE Strategy Mode */}
+                          {strategyType === '0dte' && (timeframe === '1m' || timeframe === '5m') ? (
                             <div style={{ overflowX: 'auto' }}>
-                              {/* Table Header */}
+                              {/* 0DTE Table Header - matching playbook style */}
                               <div style={{
                                 display: 'grid',
-                                gridTemplateColumns: '60px 60px 80px 80px 80px 50px 1fr 120px',
+                                gridTemplateColumns: '60px 60px 80px 80px 80px 50px 1fr',
                                 gap: '0.75rem',
                                 fontSize: '0.5625rem',
                                 fontWeight: 500,
@@ -1901,91 +1963,250 @@ export default function TickerDetail() {
                                 paddingBottom: '0.5rem',
                                 borderBottom: `1px solid ${C.dividerLight}`,
                                 marginBottom: '0.5rem',
-                                minWidth: '700px',
+                                minWidth: '600px',
                               }}>
-                                <span>{t('plan')}</span>
+                                <span>{t('status_col')}</span>
                                 <span>{t('direction')}</span>
                                 <span style={{ textAlign: 'right' }}>{t('entry')}</span>
                                 <span style={{ textAlign: 'right' }}>{t('target')}</span>
                                 <span style={{ textAlign: 'right' }}>{t('stop')}</span>
-                                <span style={{ textAlign: 'center' }}>R:R</span>
-                                <span>{t('condition')}</span>
-                                <span>{t('risk')}</span>
+                                <span style={{ textAlign: 'center' }}>{lang === 'zh' ? '风险' : 'Risk'}</span>
+                                <span style={{ textAlign: 'right' }}>{lang === 'zh' ? '原因' : 'Reasons'}</span>
                               </div>
-                              {/* Table Rows */}
-                              {analysis.playbook.slice(0, 2).map((plan, i) => {
-                                const isLong = plan.target > plan.level;
-                                const direction = isLong ? 'LONG' : 'SHORT';
-                                const directionColor = isLong ? C.bullish : C.bearish;
-                                const riskAmt = Math.abs(plan.level - plan.invalidation);
-                                const rewardAmt = Math.abs(plan.target - plan.level);
-                                const rr = riskAmt > 0 ? (rewardAmt / riskAmt).toFixed(1) : '—';
+                              {/* 0DTE Table Row */}
+                              {simTradeLoading && !simTradeData ? (
+                                <div style={{ color: C.textMuted, fontSize: '0.75rem', padding: '0.5rem 0' }}>
+                                  {t('loading')}
+                                </div>
+                              ) : simTradeError ? (
+                                <div style={{ color: C.textMuted, fontSize: '0.75rem', padding: '0.5rem 0' }}>
+                                  {simTradeError}
+                                </div>
+                              ) : simTradeData ? (
+                                <div style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: '60px 60px 80px 80px 80px 50px 1fr',
+                                  gap: '0.75rem',
+                                  padding: '0.625rem 0',
+                                  fontSize: '0.75rem',
+                                  fontFamily: MONO,
+                                  fontVariantNumeric: 'tabular-nums',
+                                  alignItems: 'center',
+                                  minWidth: '600px',
+                                }}>
+                                  {/* Status */}
+                                  <span style={{
+                                    fontWeight: 600,
+                                    padding: '0.125rem 0.375rem',
+                                    borderRadius: '2px',
+                                    textAlign: 'center',
+                                    fontSize: '0.625rem',
+                                    backgroundColor:
+                                      simTradeData.plan.status === 'WAIT' ? '#f5f5f5' :
+                                      simTradeData.plan.status === 'WATCH' ? '#fef3c7' :
+                                      simTradeData.plan.status === 'ARMED' ? '#fed7aa' :
+                                      simTradeData.plan.status === 'ENTER' ? '#bbf7d0' :
+                                      simTradeData.plan.status === 'HOLD' ? '#bfdbfe' :
+                                      simTradeData.plan.status === 'TRIM' ? '#e9d5ff' : '#e5e5e5',
+                                    color:
+                                      simTradeData.plan.status === 'WAIT' ? '#737373' :
+                                      simTradeData.plan.status === 'WATCH' ? '#92400e' :
+                                      simTradeData.plan.status === 'ARMED' ? '#c2410c' :
+                                      simTradeData.plan.status === 'ENTER' ? '#15803d' :
+                                      simTradeData.plan.status === 'HOLD' ? '#1d4ed8' :
+                                      simTradeData.plan.status === 'TRIM' ? '#7c3aed' : '#525252',
+                                  }}>
+                                    {t(`status_${simTradeData.plan.status}`)}
+                                  </span>
+                                  {/* Direction */}
+                                  <span style={{
+                                    fontWeight: 600,
+                                    color: simTradeData.plan.direction === 'CALL' ? C.bullish :
+                                           simTradeData.plan.direction === 'PUT' ? C.bearish : C.textMuted,
+                                    padding: '0.125rem 0.375rem',
+                                    backgroundColor: simTradeData.plan.direction === 'CALL' ? 'rgba(22, 163, 74, 0.1)' :
+                                                     simTradeData.plan.direction === 'PUT' ? 'rgba(220, 38, 38, 0.1)' : 'transparent',
+                                    borderRadius: '2px',
+                                    textAlign: 'center',
+                                    fontSize: '0.625rem',
+                                  }}>
+                                    {simTradeData.plan.direction === 'CALL' ? (lang === 'zh' ? '做多' : 'CALL') :
+                                     simTradeData.plan.direction === 'PUT' ? (lang === 'zh' ? '做空' : 'PUT') : '-'}
+                                  </span>
+                                  {/* Entry */}
+                                  <span style={{ fontWeight: 500, textAlign: 'right' }}>
+                                    {simTradeData.plan.entryUnderlying || '-'}
+                                  </span>
+                                  {/* Target */}
+                                  <span style={{ fontWeight: 500, color: C.bullish, textAlign: 'right' }}>
+                                    {simTradeData.plan.targetUnderlying || '-'}
+                                  </span>
+                                  {/* Stop */}
+                                  <span style={{ fontWeight: 600, color: C.bearish, textAlign: 'right' }}>
+                                    {simTradeData.plan.invalidation || '-'}
+                                  </span>
+                                  {/* Risk */}
+                                  <span style={{
+                                    fontWeight: 500,
+                                    textAlign: 'center',
+                                    fontSize: '0.625rem',
+                                    padding: '0.125rem 0.25rem',
+                                    borderRadius: '2px',
+                                    backgroundColor:
+                                      simTradeData.plan.risk === 'HIGH' ? '#fee2e2' :
+                                      simTradeData.plan.risk === 'LOW' ? '#dcfce7' : '#fef3c7',
+                                    color:
+                                      simTradeData.plan.risk === 'HIGH' ? C.bearish :
+                                      simTradeData.plan.risk === 'LOW' ? C.bullish : '#92400e',
+                                  }}>
+                                    {simTradeData.plan.risk === 'HIGH' ? (lang === 'zh' ? '高' : 'High') :
+                                     simTradeData.plan.risk === 'LOW' ? (lang === 'zh' ? '低' : 'Low') :
+                                     (lang === 'zh' ? '中' : 'Med')}
+                                  </span>
+                                  {/* Reasons */}
+                                  <span style={{
+                                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                                    fontSize: '0.6875rem',
+                                    color: C.textSecondary,
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    textAlign: 'right',
+                                  }} title={simTradeData.plan.reasons.join('; ')}>
+                                    {simTradeData.plan.reasons.length > 0
+                                      ? (simTradeData.plan.reasons[0] === 'Outside trading hours'
+                                          ? t('outside_trading_hours')
+                                          : simTradeData.plan.reasons[0])
+                                      : '-'}
+                                  </span>
+                                </div>
+                              ) : (
+                                <div style={{ color: C.textMuted, fontSize: '0.75rem', padding: '0.5rem 0' }}>
+                                  {t('no_executable_plans')}
+                                </div>
+                              )}
+                              {/* Watch Hint */}
+                              {simTradeData?.plan.watchlistHint && (
+                                <div style={{
+                                  marginTop: '0.5rem',
+                                  fontSize: '0.6875rem',
+                                  color: C.accent,
+                                  fontStyle: 'italic',
+                                }}>
+                                  {simTradeData.plan.watchlistHint}
+                                </div>
+                              )}
+                            </div>
+                          ) : strategyType === '0dte' && timeframe === '1d' ? (
+                            /* 0DTE not available on 1d timeframe */
+                            <div style={{ color: C.textMuted, fontSize: '0.75rem' }}>
+                              {lang === 'zh' ? '0DTE 策略仅支持 1m/5m 周期' : '0DTE strategy only available on 1m/5m timeframes'}
+                            </div>
+                          ) : (
+                            /* Original Playbook Mode */
+                            analysis.playbook.length === 0 ? (
+                              <div style={{ color: C.textMuted, fontSize: '0.75rem' }}>{t('no_executable_plans')}</div>
+                            ) : (
+                              <div style={{ overflowX: 'auto' }}>
+                                {/* Table Header */}
+                                <div style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: '60px 60px 80px 80px 80px 50px 1fr 120px',
+                                  gap: '0.75rem',
+                                  fontSize: '0.5625rem',
+                                  fontWeight: 500,
+                                  color: C.textMuted,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.04em',
+                                  paddingBottom: '0.5rem',
+                                  borderBottom: `1px solid ${C.dividerLight}`,
+                                  marginBottom: '0.5rem',
+                                  minWidth: '700px',
+                                }}>
+                                  <span>{t('plan')}</span>
+                                  <span>{t('direction')}</span>
+                                  <span style={{ textAlign: 'right' }}>{t('entry')}</span>
+                                  <span style={{ textAlign: 'right' }}>{t('target')}</span>
+                                  <span style={{ textAlign: 'right' }}>{t('stop')}</span>
+                                  <span style={{ textAlign: 'center' }}>R:R</span>
+                                  <span>{t('condition')}</span>
+                                  <span>{t('risk')}</span>
+                                </div>
+                                {/* Table Rows */}
+                                {analysis.playbook.slice(0, 2).map((plan, i) => {
+                                  const isLong = plan.target > plan.level;
+                                  const direction = isLong ? 'LONG' : 'SHORT';
+                                  const directionColor = isLong ? C.bullish : C.bearish;
+                                  const riskAmt = Math.abs(plan.level - plan.invalidation);
+                                  const rewardAmt = Math.abs(plan.target - plan.level);
+                                  const rr = riskAmt > 0 ? (rewardAmt / riskAmt).toFixed(1) : '—';
 
-                                return (
-                                  <div
-                                    key={i}
-                                    style={{
-                                      display: 'grid',
-                                      gridTemplateColumns: '60px 60px 80px 80px 80px 50px 1fr 120px',
-                                      gap: '0.75rem',
-                                      padding: '0.625rem 0',
-                                      fontSize: '0.75rem',
-                                      fontFamily: MONO,
-                                      fontVariantNumeric: 'tabular-nums',
-                                      borderBottom: i < analysis.playbook.slice(0, 2).length - 1 ? `1px solid ${C.dividerLight}` : 'none',
-                                      alignItems: 'center',
-                                      minWidth: '700px',
-                                    }}
-                                  >
-                                    <span style={{ fontWeight: 600, color: C.textSecondary }}>
-                                      {i === 0 ? t('plan_a') : t('plan_b')}
-                                    </span>
-                                    <span style={{
-                                      fontWeight: 600,
-                                      color: directionColor,
-                                      padding: '0.125rem 0.375rem',
-                                      backgroundColor: isLong ? 'rgba(22, 163, 74, 0.1)' : 'rgba(220, 38, 38, 0.1)',
-                                      borderRadius: '2px',
-                                      textAlign: 'center',
-                                      fontSize: '0.625rem',
-                                    }}>
-                                      {direction}
-                                    </span>
-                                    <span style={{ fontWeight: 500, textAlign: 'right' }}>{formatPrice(plan.level)}</span>
-                                    <span style={{ fontWeight: 500, color: C.bullish, textAlign: 'right' }}>{formatPrice(plan.target)}</span>
-                                    <span style={{ fontWeight: 600, color: C.bearish, textAlign: 'right' }}>{formatPrice(plan.invalidation)}</span>
-                                    <span style={{ fontWeight: 500, textAlign: 'center' }}>{rr}</span>
-                                    <span style={{
-                                      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                                      fontSize: '0.6875rem',
-                                      color: C.textSecondary,
-                                      whiteSpace: 'nowrap',
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis',
-                                    }} title={t(plan.condition) || plan.condition}>
-                                      {t(plan.condition) || plan.condition}
-                                    </span>
-                                    <span style={{
-                                      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                                      fontSize: '0.625rem',
-                                      color: plan.risk ? C.warn : C.textMuted,
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: '0.25rem',
-                                    }}>
-                                      {plan.risk && <span>⚠</span>}
+                                  return (
+                                    <div
+                                      key={i}
+                                      style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: '60px 60px 80px 80px 80px 50px 1fr 120px',
+                                        gap: '0.75rem',
+                                        padding: '0.625rem 0',
+                                        fontSize: '0.75rem',
+                                        fontFamily: MONO,
+                                        fontVariantNumeric: 'tabular-nums',
+                                        borderBottom: i < analysis.playbook.slice(0, 2).length - 1 ? `1px solid ${C.dividerLight}` : 'none',
+                                        alignItems: 'center',
+                                        minWidth: '700px',
+                                      }}
+                                    >
+                                      <span style={{ fontWeight: 600, color: C.textSecondary }}>
+                                        {i === 0 ? t('plan_a') : t('plan_b')}
+                                      </span>
                                       <span style={{
+                                        fontWeight: 600,
+                                        color: directionColor,
+                                        padding: '0.125rem 0.375rem',
+                                        backgroundColor: isLong ? 'rgba(22, 163, 74, 0.1)' : 'rgba(220, 38, 38, 0.1)',
+                                        borderRadius: '2px',
+                                        textAlign: 'center',
+                                        fontSize: '0.625rem',
+                                      }}>
+                                        {direction}
+                                      </span>
+                                      <span style={{ fontWeight: 500, textAlign: 'right' }}>{formatPrice(plan.level)}</span>
+                                      <span style={{ fontWeight: 500, color: C.bullish, textAlign: 'right' }}>{formatPrice(plan.target)}</span>
+                                      <span style={{ fontWeight: 600, color: C.bearish, textAlign: 'right' }}>{formatPrice(plan.invalidation)}</span>
+                                      <span style={{ fontWeight: 500, textAlign: 'center' }}>{rr}</span>
+                                      <span style={{
+                                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                                        fontSize: '0.6875rem',
+                                        color: C.textSecondary,
                                         whiteSpace: 'nowrap',
                                         overflow: 'hidden',
                                         textOverflow: 'ellipsis',
-                                      }} title={plan.risk ? (t(plan.risk) || plan.risk) : ''}>
-                                        {plan.risk ? (t(plan.risk) || plan.risk) : '—'}
+                                      }} title={t(plan.condition) || plan.condition}>
+                                        {t(plan.condition) || plan.condition}
                                       </span>
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                            </div>
+                                      <span style={{
+                                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                                        fontSize: '0.625rem',
+                                        color: plan.risk ? C.warn : C.textMuted,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.25rem',
+                                      }}>
+                                        {plan.risk && <span>⚠</span>}
+                                        <span style={{
+                                          whiteSpace: 'nowrap',
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                        }} title={plan.risk ? (t(plan.risk) || plan.risk) : ''}>
+                                          {plan.risk ? (t(plan.risk) || plan.risk) : '—'}
+                                        </span>
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )
                           )}
                         </div>
                       )}
@@ -2216,6 +2437,7 @@ export default function TickerDetail() {
                           </div>
                         </div>
                       )}
+
                     </div>
                   </div>
                 </div>

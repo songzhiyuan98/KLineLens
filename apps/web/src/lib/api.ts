@@ -548,3 +548,59 @@ export async function fetchEHContext(
 
   return res.json();
 }
+
+// ============ Sim Trade Plan API ============
+
+/** 交易计划响应 */
+export interface SimTradePlan {
+  status: 'WAIT' | 'WATCH' | 'ARMED' | 'ENTER' | 'HOLD' | 'TRIM' | 'EXIT';
+  direction: 'CALL' | 'PUT' | 'NONE';
+  entryZone: string | null;
+  entryUnderlying: string | null;
+  targetUnderlying: string | null;
+  invalidation: string | null;
+  risk: 'LOW' | 'MED' | 'HIGH';
+  watchlistHint: string | null;
+  reasons: string[];
+  barsSinceEntry: number;
+  targetAttempts: number;
+}
+
+export interface SimTradeResponse {
+  ticker: string;
+  ts: string;
+  plan: SimTradePlan;
+  history: Array<{
+    ts: string;
+    status: string;
+    direction: string;
+  }>;
+  stats: {
+    tradesToday: number;
+    maxTradesPerDay: number;
+  };
+}
+
+/**
+ * 获取 0DTE 交易计划
+ *
+ * 根据当前市场分析生成交易计划建议。
+ */
+export async function fetchSimTradePlan(
+  ticker: string,
+  tf: string = '1m'
+): Promise<SimTradeResponse> {
+  const params = new URLSearchParams({
+    ticker,
+    tf,
+  });
+
+  const res = await fetch(`${API_BASE}/v1/sim-trade-plan?${params}`);
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail?.message || 'Failed to fetch trade plan');
+  }
+
+  return res.json();
+}

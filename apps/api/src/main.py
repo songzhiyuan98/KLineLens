@@ -946,6 +946,140 @@ async def narrative(request: NarrativeRequest):
         )
 
 
+# ============ Sim Trade Plan API ============
+
+@app.get("/v1/sim-trade-plan")
+async def get_sim_trade_plan(
+    ticker: str = Query(..., description="股票代码 (如 QQQ)"),
+    tf: str = Query("1m", description="时间周期", regex="^(1m|5m)$"),
+):
+    """
+    获取 0DTE 交易计划
+
+    根据当前市场分析生成交易计划建议。
+
+    返回:
+        - plan: 当前交易计划 (status, direction, entry, target, invalidation, risk)
+        - history: 状态变化历史
+        - stats: 今日交易统计
+
+    状态流转:
+        WAIT → WATCH → ARMED → ENTER → HOLD → TRIM/EXIT
+
+    示例响应:
+        {
+            "ticker": "QQQ",
+            "ts": "2026-01-16T09:45:00-05:00",
+            "plan": {
+                "status": "ARMED",
+                "direction": "CALL",
+                "entryZone": "R1 breakout",
+                "entryUnderlying": ">= 624.30 (2 closes)",
+                "targetUnderlying": "R2 626.10",
+                "invalidation": "< 624.00 (2 bars)",
+                "risk": "MED",
+                "watchlistHint": "Watch 0DTE ATM +1 strike CALL",
+                "reasons": ["Price 0.2% from R1", "Trend 1m: up"]
+            },
+            "history": [{"ts": "09:35", "status": "WATCH", "direction": "CALL"}],
+            "stats": {"tradesToday": 0, "maxTradesPerDay": 1}
+        }
+    """
+    try:
+        # 导入 sim_trader 服务
+        from .services.sim_trader_service import get_trade_plan, convert_analysis_to_snapshot
+
+        ticker = ticker.upper()
+
+        # 获取 K 线数据
+        bars_data = provider.get_bars(ticker, tf, window="1d")
+        bars = [
+            {
+                "time": bar.t,
+                "open": bar.o,
+                "high": bar.h,
+                "low": bar.l,
+                "close": bar.c,
+                "volume": bar.v,
+            }
+            for bar in bars_data
+        ]
+
+        if not bars:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "NO_DATA", "message": f"No bars data for {ticker}"}
+            )
+
+        # 运行分析
+        core_bars = [
+            CoreBar(
+                t=bar["time"],
+                o=bar["open"],
+                h=bar["high"],
+                l=bar["low"],
+                c=bar["close"],
+                v=bar["volume"],
+            )
+            for bar in bars
+        ]
+        params = AnalysisParams()
+        report = analyze_market(bars=core_bars, ticker=ticker, state=None, params=params)
+        analysis_dict = report_to_dict(report)
+
+        # 获取 EH 上下文
+        eh_context = None
+        if tf in ["1m", "5m"]:
+            try:
+                eh_context = await get_eh_context_internal(ticker, tf)
+            except Exception as e:
+                logger.warning(f"获取 EH 上下文失败: {e}")
+
+        # 获取交易计划
+        result = get_trade_plan(
+            ticker=ticker,
+            analysis_report=analysis_dict,
+            bars=bars,
+            eh_context=eh_context,
+            timeframe=tf
+        )
+
+        return result
+
+    except TickerNotFoundError as e:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "NO_DATA", "message": str(e)}
+        )
+    except RateLimitError as e:
+        raise HTTPException(
+            status_code=429,
+            detail={"code": "PROVIDER_RATE_LIMITED", "message": str(e)}
+        )
+    except ProviderError as e:
+        raise HTTPException(
+            status_code=502,
+            detail={"code": "PROVIDER_ERROR", "message": str(e)}
+        )
+
+
+@app.post("/v1/sim-trade-plan/reset")
+async def reset_sim_trade_plan(
+    ticker: str = Query(..., description="股票代码 (如 QQQ)"),
+):
+    """
+    重置交易计划状态
+
+    用于每日开盘前重置状态。
+    """
+    from .services.sim_trader_service import reset_trader
+
+    ticker = ticker.upper()
+    reset_trader(ticker)
+
+    return {"message": f"Trade plan for {ticker} has been reset"}
+
+
 # ============ Signal Evaluation API ============
 
 @app.post("/v1/signal-evaluation", status_code=201)

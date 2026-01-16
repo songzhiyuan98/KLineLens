@@ -48,8 +48,27 @@ const TICKERS: TickerInfo[] = [
   { symbol: 'SOL/USD', name: 'Solana' },
 ];
 
+// 策略类型
+export type StrategyType = 'playbook' | '0dte';
+
+// 存储策略类型到 localStorage
+export function saveStrategyType(type: StrategyType): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('klens_strategy_type', type);
+  }
+}
+
+// 从 localStorage 读取策略类型
+export function loadStrategyType(): StrategyType {
+  if (typeof window === 'undefined') return 'playbook';
+  return (localStorage.getItem('klens_strategy_type') as StrategyType) || 'playbook';
+}
+
 export default function Settings() {
   const { lang, setLang, t } = useI18n();
+
+  // Strategy type state
+  const [strategyType, setStrategyType] = useState<StrategyType>('playbook');
 
   // Watchlist state
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
@@ -85,10 +104,17 @@ export default function Settings() {
       .slice(0, 6);
   }, [newTicker, watchlist]);
 
-  // Load watchlist
+  // Load strategy type and watchlist
   useEffect(() => {
+    setStrategyType(loadStrategyType());
     loadWatchlist();
   }, []);
+
+  // Handle strategy type change
+  const handleStrategyChange = (type: StrategyType) => {
+    setStrategyType(type);
+    saveStrategyType(type);
+  };
 
   // Close suggestions on outside click
   useEffect(() => {
@@ -399,6 +425,70 @@ export default function Settings() {
             {lang === 'zh'
               ? '自选股将获得实时 WebSocket 数据推送，最多支持 8 个。'
               : 'Watchlist items receive real-time WebSocket data. Maximum 8 items.'}
+          </div>
+        </section>
+
+        {/* Strategy Type Setting */}
+        <section style={{ marginBottom: '2.5rem' }}>
+          <div style={{
+            fontSize: 'clamp(0.625rem, 0.5rem + 0.2vw, 0.75rem)',
+            fontWeight: 500,
+            color: '#999',
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            marginBottom: '0.75rem',
+          }}>
+            {t('strategy_type')}
+          </div>
+
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.5rem',
+          }}>
+            {(['playbook', '0dte'] as StrategyType[]).map((type) => (
+              <button
+                key={type}
+                onClick={() => handleStrategyChange(type)}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  gap: '0.25rem',
+                  padding: '0.875rem 1rem',
+                  fontSize: F.small,
+                  fontWeight: 500,
+                  border: '1px solid',
+                  borderColor: strategyType === type ? '#000' : '#e5e5e5',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  backgroundColor: strategyType === type ? '#000' : '#fff',
+                  color: strategyType === type ? '#fff' : '#666',
+                  transition: 'all 0.15s',
+                  textAlign: 'left',
+                }}
+              >
+                <span style={{ fontWeight: 600 }}>
+                  {type === 'playbook' ? t('strategy_playbook') : t('strategy_0dte')}
+                </span>
+                <span style={{
+                  fontSize: 'clamp(0.5625rem, 0.5rem + 0.15vw, 0.6875rem)',
+                  opacity: strategyType === type ? 0.8 : 0.7,
+                  fontWeight: 400,
+                }}>
+                  {type === 'playbook' ? t('strategy_playbook_desc') : t('strategy_0dte_desc')}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div style={{
+            fontSize: 'clamp(0.625rem, 0.5rem + 0.15vw, 0.6875rem)',
+            color: '#999',
+            marginTop: '0.75rem',
+            lineHeight: 1.5,
+          }}>
+            {t('strategy_type_desc')}
           </div>
         </section>
 

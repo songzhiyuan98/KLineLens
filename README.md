@@ -1,338 +1,338 @@
-<h1 align="center">KLineLens</h1>
+<h1 align="center">
+  KLineLens
+</h1>
+
+<h3 align="center">
+  Stop guessing. Start seeing market structure.
+</h3>
 
 <p align="center">
-  <strong>Open-source market structure analysis terminal for traders</strong>
+  <strong>Free, open-source trading analysis terminal</strong>
+  <br>
+  <em>Real-time structure analysis • Pluggable data providers • Custom trading strategies • AI insights</em>
 </p>
 
 <p align="center">
-  <a href="#features">Features</a> •
-  <a href="#quick-start">Quick Start</a> •
-  <a href="#accuracy">Accuracy</a> •
-  <a href="#providers">Providers</a> •
-  <a href="#documentation">Docs</a> •
-  <a href="#contributing">Contributing</a>
+  <a href="https://klinelens.com" target="_blank"><strong>🌐 Live Demo</strong></a> •
+  <a href="#-quick-start">Quick Start</a> •
+  <a href="#-features">Features</a> •
+  <a href="#-custom-strategies">Custom Strategies</a> •
+  <a href="#-documentation">Docs</a>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.8.0-blue.svg" alt="Version" />
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License" />
   <img src="https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker&logoColor=white" alt="Docker" />
   <img src="https://img.shields.io/badge/python-3.11+-3776AB.svg?logo=python&logoColor=white" alt="Python" />
   <img src="https://img.shields.io/badge/next.js-14-000000.svg?logo=next.js&logoColor=white" alt="Next.js" />
+  <img src="https://img.shields.io/badge/i18n-中文%20%7C%20English-blue.svg" alt="i18n" />
+  <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" />
 </p>
 
 <p align="center">
-  <img src="docs/images/detail.png" alt="KLineLens Screenshot" width="800" />
+  <img src="docs/images/screenshot.png" alt="KLineLens Screenshot" width="900" />
 </p>
 
 ---
 
-## Why KLineLens?
+## 🎯 What is KLineLens?
 
-**Real traders, real results.** I built KLineLens to track market structure for QQQ options day trading. The breakout detection system has proven highly accurate in real trading conditions.
+KLineLens is an **open-source market structure analysis terminal** designed for day traders and options traders. It provides institutional-grade analysis capabilities for free:
 
-| What You Get | Why It Matters |
-|--------------|----------------|
-| **Structure Analysis** | Know if you're in uptrend, downtrend, or range instantly |
-| **Support/Resistance Zones** | Auto-detected S/R levels with strength scoring |
-| **Breakout Detection** | 3-factor confirmation (structure + volume + momentum) |
-| **Extended Hours Context** | Premarket regime, gap analysis, key levels (YC/PMH/PML) |
-| **Behavior Inference** | Wyckoff-inspired probability distribution |
-| **Conditional Playbook** | If-then trading plans with entry, target, stop |
-| **AI Interpretation** | Time-aware narrative with EH context integration |
+- **Real-time structure detection** — Know if you're in uptrend, downtrend, or range
+- **Smart breakout confirmation** — 3-factor validation to avoid fakeouts
+- **Pluggable trading strategies** — Use built-in strategies or code your own
+- **AI-powered interpretation** — GPT-4/Gemini integration for market narratives
+- **Multi-language support** — Full Chinese and English interface
 
-> 💡 **Use Case**: Track QQQ/SPY structure on 5-minute charts, use 1-minute for entry timing. The tool tells you when structure confirms a breakout vs when it's likely a fakeout.
+> 💡 **Built for 0DTE options traders** who need fast, accurate structure analysis during market hours.
 
 ---
 
-## Accuracy
+## ✨ Core Features
 
-Backtested on 6 months of daily data across 19 major tickers:
+### 📊 Market Structure Analysis
+| Feature | Description |
+|---------|-------------|
+| **Trend Detection** | Uptrend / Downtrend / Range with confidence % |
+| **Auto S/R Zones** | ATR-based support/resistance with strength scoring |
+| **Breakout Quality** | 3-factor: Close ×2 + RVOL ≥ 1.8 + Result ≥ 0.6 ATR |
+| **Behavior Inference** | Wyckoff-based: Accumulation, Distribution, Markup, etc. |
 
-| Metric | Result |
-|--------|--------|
-| **Breakout Accuracy** | **98.9%** (±4.6%) |
-| **Fakeout Detection** | **88.9%** (±31.4%) |
-| **Signal Hit Rate** | 73.8% |
-| **Total Trading Days** | 2,432 |
+### 🌅 Extended Hours Intelligence
+| Feature | Description |
+|---------|-------------|
+| **Premarket Regime** | Gap & Go, Gap Fill, Trend Continuation, Range Day |
+| **Key Levels** | YC (Yesterday Close), PMH/PML (Premarket High/Low) |
+| **Session Awareness** | Analysis adapts based on market session |
 
-<details>
-<summary>Per-Ticker Results</summary>
+### 📋 Trading Strategies (Pluggable!)
+| Strategy | Description |
+|----------|-------------|
+| **Playbook** | Conditional entry plans with entry/target/stop/R:R |
+| **0DTE State Machine** | WAIT → WATCH → ARMED → ENTER → HOLD → TRIM → EXIT |
+| **Custom** | 🔥 **Write your own strategy and plug it in!** |
 
-| Ticker | Breakout Acc | Fakeout Det | Signal Hit |
-|--------|-------------|-------------|------------|
-| QQQ | 100% | - | 100% |
-| SPY | 100% | - | 67% |
-| TSLA | 100% | - | 100% |
-| NVDA | 96% | 75% | 67% |
-| META | 100% | 100% | 64% |
-| AAPL | 100% | 100% | 71% |
+### 🔌 Hot-Swappable Data Providers
+| Provider | Free Tier | Volume Data | Setup |
+|----------|-----------|-------------|-------|
+| **Yahoo Finance** | Unlimited | Partial | No API key needed |
+| **TwelveData** ⭐ | 800/day | ✅ Reliable | Free API key |
+| **Alpaca** | Unlimited | ✅ Full | Free API key |
+| **Alpha Vantage** | 25/day | ✅ Full | Free API key |
 
-</details>
-
-Run your own backtest:
-```bash
-python scripts/run_backtest.py
-```
-
----
-
-## Features
-
-### Market Structure Detection
-- **Regime Classification**: Uptrend / Downtrend / Range with confidence score
-- **Swing Point Detection**: Fractal-based HH/HL/LH/LL identification
-- **Zone Clustering**: ATR-based support/resistance zone detection
-
-### Breakout Analysis
-- **3-Factor Confirmation**: Structure (2 closes) + Volume (RVOL ≥ 1.8) + Result (≥ 0.6 ATR)
-- **State Machine**: Idle → Attempt → Confirmed / Fakeout
-- **Real-time Tracking**: Visual indicators on chart
-
-### Behavior Inference
-- **5 Wyckoff Behaviors**: Accumulation, Shakeout, Markup, Distribution, Markdown
-- **Probability Distribution**: Softmax-normalized scores
-- **Evidence Pack**: Click any evidence to locate on chart
-
-### Trading Playbook
-- **Conditional Plans**: Plan A (primary) + Plan B (alternative)
-- **Risk Management**: Entry, target, stop-loss, R:R ratio
-- **Invalidation Levels**: When plan becomes invalid
-
-### Extended Hours (EH) Context
-- **Premarket Analysis**: PMH/PML levels, gap detection, regime classification
-- **Session Awareness**: Different analysis modes for premarket/opening/regular/closing
-- **Key Levels**: YC (Yesterday's Close), PMH/PML (Premarket High/Low), AHH/AHL (Afterhours)
-- **Time-Aware AI**: EH context automatically included based on trading session
-
-### AI Interpretation (Optional)
-- **LLM Integration**: OpenAI GPT-4 / Google Gemini support
-- **Time-Aware Context**: EH data included during premarket/opening sessions
-- **Auto-trigger**: On regime change, breakout state change, behavior shift
-- **Bilingual**: Chinese and English output
+### 🌍 Multi-Language Support
+- **中文** — 完整中文界面和 AI 解读
+- **English** — Full English interface and AI interpretation
+- Easy to add more languages via i18n system
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
 ### Prerequisites
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
 
-### One Command Setup
+### Step 1: Clone the Repository
 
 ```bash
-# Clone
 git clone https://github.com/songzhiyuan98/KLineLens.git
 cd KLineLens
-
-# Configure (optional - defaults work fine)
-cp .env.example .env
-
-# Start
-docker compose up -d --build
-
-# Open browser
-# → http://localhost:3000
 ```
 
-That's it. Type a ticker and start analyzing.
+### Step 2: Configure Environment
 
-### Stopping
+```bash
+# Copy example config
+cp .env.example .env
+```
+
+Edit `.env` with your preferred settings:
+
+```bash
+# ============ REQUIRED ============
+# Data Provider (choose one)
+PROVIDER=yahoo                    # Default, no API key needed
+
+# ============ RECOMMENDED ============
+# TwelveData - Better volume data, 800 free requests/day
+# Get your free key: https://twelvedata.com/apikey
+PROVIDER=twelvedata
+TWELVEDATA_API_KEY=your_api_key_here
+
+# ============ OPTIONAL ============
+# Alpaca - Good for US stocks, unlimited requests
+# Get your free key: https://app.alpaca.markets/signup
+ALPACA_API_KEY=your_key
+ALPACA_API_SECRET=your_secret
+
+# Alpha Vantage - Premium data, 25 requests/day free
+# Get your free key: https://www.alphavantage.co/support/#api-key
+ALPHAVANTAGE_API_KEY=your_key
+
+# ============ AI FEATURES (OPTIONAL) ============
+# OpenAI GPT-4 - For AI market interpretation
+# Get your key: https://platform.openai.com/api-keys
+OPENAI_API_KEY=sk-your_key_here
+
+# Google Gemini - Alternative AI provider
+# Get your key: https://makersuite.google.com/app/apikey
+GOOGLE_API_KEY=your_key_here
+
+# ============ ADVANCED ============
+CACHE_TTL=60                      # Cache duration in seconds
+API_PORT=8000                     # Backend port
+WEB_PORT=3000                     # Frontend port
+```
+
+### Step 3: Start the Application
+
+```bash
+# Build and start all services
+docker compose up -d --build
+
+# Check status
+docker compose ps
+```
+
+### Step 4: Open Your Browser
+
+```
+http://localhost:3000
+```
+
+Type any ticker (TSLA, QQQ, AAPL, SPY...) and start analyzing!
+
+### Stopping the Application
 
 ```bash
 docker compose down
 ```
 
----
+### Updating
 
-## Providers
-
-KLineLens uses a **pluggable provider architecture**. Switch data sources without code changes.
-
-| Provider | Free Tier | Volume Data | Latency | Best For |
-|----------|-----------|-------------|---------|----------|
-| **TwelveData** ⭐ | 800 req/day | ✅ Reliable | ~170ms | Recommended |
-| **Yahoo Finance** | Unlimited | ⚠️ Partial | ~500ms | Quick start |
-| **Alpaca** | Unlimited | ✅ Full | ~200ms | US stocks |
-| **Alpha Vantage** | 25 req/day | ✅ Full | ~300ms | Premium data |
-
-### Switching Providers
-
-Edit `.env`:
 ```bash
-# Default (no API key needed)
-PROVIDER=yahoo
-
-# Recommended (free, reliable volume)
-PROVIDER=twelvedata
-TWELVEDATA_API_KEY=your_key
-
-# Alternative
-PROVIDER=alpaca
-ALPACA_API_KEY=your_key
-ALPACA_API_SECRET=your_secret
-```
-
-Restart containers:
-```bash
+git pull
 docker compose up -d --build
 ```
 
-> 🔌 **Extensible**: Adding a new provider? Just implement the `MarketDataProvider` interface. See [docs/PROVIDER.md](docs/PROVIDER.md).
+---
+
+## 🔑 API Keys Guide
+
+| Provider | Free Tier | How to Get |
+|----------|-----------|------------|
+| **TwelveData** ⭐ | 800 req/day | 1. Go to [twelvedata.com](https://twelvedata.com)<br>2. Sign up for free<br>3. Go to Dashboard → API Keys |
+| **Alpaca** | Unlimited | 1. Go to [alpaca.markets](https://app.alpaca.markets/signup)<br>2. Sign up for free paper trading<br>3. Go to API Keys section |
+| **Alpha Vantage** | 25 req/day | 1. Go to [alphavantage.co](https://www.alphavantage.co/support/#api-key)<br>2. Fill the form<br>3. Get key via email |
+| **OpenAI** | Pay-per-use | 1. Go to [platform.openai.com](https://platform.openai.com/api-keys)<br>2. Create account<br>3. Generate API key |
+| **Google Gemini** | Free tier | 1. Go to [makersuite.google.com](https://makersuite.google.com/app/apikey)<br>2. Sign in with Google<br>3. Create API key |
+
+> 💡 **Recommendation**: Start with Yahoo (no key needed), then upgrade to TwelveData for better volume data.
 
 ---
 
-## Architecture
+## 🎮 Custom Trading Strategies
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Next.js Frontend                      │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌─────────┐ │
-│  │   Chart  │  │  Zones   │  │ Playbook │  │Timeline │ │
-│  └──────────┘  └──────────┘  └──────────┘  └─────────┘ │
-└─────────────────────────┬───────────────────────────────┘
-                          │ REST API
-┌─────────────────────────▼───────────────────────────────┐
-│                    FastAPI Backend                       │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │              Analysis Engine (Python)             │  │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────────────┐  │  │
-│  │  │Structure │ │ Behavior │ │Playbook Generator│  │  │
-│  │  └──────────┘ └──────────┘ └──────────────────┘  │  │
-│  └──────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │         Provider Layer (Pluggable)               │  │
-│  │   Yahoo │ TwelveData │ Alpaca │ Alpha Vantage    │  │
-│  └──────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────┘
-```
+**KLineLens is designed for extensibility.** You can create your own trading strategy and plug it directly into the system!
 
----
+### Built-in Strategies
 
-## Supported Assets
+| Strategy | Description | Best For |
+|----------|-------------|----------|
+| **Playbook** | Conditional if-then plans based on structure | Swing trading, day trading |
+| **0DTE** | Real-time state machine for same-day options | 0DTE options, scalping |
 
-| Type | Examples |
-|------|----------|
-| **US Stocks** | AAPL, TSLA, NVDA, GOOGL, MSFT, META, AMZN |
-| **ETFs** | SPY, QQQ, IWM, DIA, VTI, GLD |
-| **Crypto** | BTC/USD, ETH/USD, SOL/USD |
+### Create Your Own Strategy
 
-### Timeframes
-- **1 minute**: Entry timing, execution level
-- **5 minutes**: Intraday structure, day trading
-- **Daily**: Swing trading, trend analysis
+Want to implement your own trading logic? See our comprehensive guide:
 
----
+📖 **[Custom Strategy Development Guide](docs/CUSTOM_STRATEGY.md)**
 
-## Configuration
+The guide covers:
+- Strategy interface specification
+- How to access market data and analysis
+- State machine patterns
+- Integrating with the frontend
+- Testing and debugging
+- Real examples
 
-```bash
-# .env
+**Quick example:**
 
-# Data Provider
-PROVIDER=twelvedata          # yahoo, twelvedata, alpaca, alphavantage
-TWELVEDATA_API_KEY=xxx       # Get free key at twelvedata.com
+```python
+# packages/core/src/strategies/my_strategy.py
+from .base import BaseStrategy, StrategySignal
 
-# LLM (optional - for AI interpretation)
-OPENAI_API_KEY=xxx           # OpenAI GPT-4
-# or
-GOOGLE_API_KEY=xxx           # Google Gemini
+class MyCustomStrategy(BaseStrategy):
+    """My custom trading strategy"""
 
-# Cache
-CACHE_TTL=60                 # Seconds
-
-# Ports
-API_PORT=8000
-WEB_PORT=3000
+    def analyze(self, snapshot: AnalysisSnapshot) -> StrategySignal:
+        # Your logic here
+        if snapshot.breakout_state == 'confirmed' and snapshot.rvol > 2.0:
+            return StrategySignal(
+                action='ENTER',
+                direction='LONG',
+                entry=snapshot.price,
+                target=snapshot.r1,
+                stop=snapshot.s1,
+                reason='Breakout confirmed with strong volume'
+            )
+        return StrategySignal(action='WAIT')
 ```
 
+Then register it in settings and it appears in your UI!
+
 ---
 
-## Documentation
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Next.js Frontend                          │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  Chart • Zones • Strategy Panel • Timeline • AI     │    │
+│  │  i18n (中文/English) • Settings • Watchlist         │    │
+│  └─────────────────────────────────────────────────────┘    │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ REST API + SSE
+┌──────────────────────────▼──────────────────────────────────┐
+│                    FastAPI Backend                           │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │              Analysis Engine (Pure Python)           │    │
+│  │  Structure → Behavior → Zones → EH Context          │    │
+│  └─────────────────────────────────────────────────────┘    │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │           Strategy Layer (Pluggable)                 │    │
+│  │    Playbook │ 0DTE │ Custom Strategies               │    │
+│  └─────────────────────────────────────────────────────┘    │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │           Provider Layer (Hot-Swappable)             │    │
+│  │    Yahoo │ TwelveData │ Alpaca │ Alpha Vantage       │    │
+│  └─────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📖 Documentation
 
 | Document | Description |
 |----------|-------------|
-| [ENGINE_SPEC.md](docs/ENGINE_SPEC.md) | Algorithm specification (structure, behavior, playbook) |
-| [API.md](docs/API.md) | REST API reference |
-| [PROVIDER.md](docs/PROVIDER.md) | Data provider integration guide |
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design |
-| [LLM_SPEC.md](docs/LLM_SPEC.md) | AI narrative with time-aware EH integration |
-| [EVALUATION.md](docs/EVALUATION.md) | Backtest methodology and results |
-| [CHANGELOG.md](docs/CHANGELOG.md) | Version history |
+| **[ENGINE_SPEC.md](docs/ENGINE_SPEC.md)** | Core algorithm specification |
+| **[CUSTOM_STRATEGY.md](docs/CUSTOM_STRATEGY.md)** | 🔥 Build your own strategy |
+| **[API.md](docs/API.md)** | REST API reference |
+| **[PROVIDER.md](docs/PROVIDER.md)** | Adding data providers |
+| **[LLM_SPEC.md](docs/LLM_SPEC.md)** | AI integration guide |
+| **[SIM_TRADER_SPEC.md](docs/SIM_TRADER_SPEC.md)** | 0DTE state machine spec |
 
 ---
 
-## Development
+## 🗺️ Roadmap
 
-### Local Setup (without Docker)
+- [x] **v0.8** — Extended Hours, 0DTE strategy, custom strategies
+- [x] **v0.7** — Responsive design, multi-language
+- [x] **v0.6** — Terminal-style UI, AI interpretation
+- [ ] **v1.0** — WebSocket streaming, signal backtesting
+- [ ] **v1.1** — Dark mode, mobile support
+- [ ] **v2.0** — Multi-timeframe, options chain integration
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Whether it's:
+
+- 🐛 Bug fixes
+- ✨ New features
+- 📝 Documentation
+- 🌍 Translations
+- 🔌 New data providers
+- 📋 Custom strategies
+
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for guidelines.
 
 ```bash
-# Backend
-cd apps/api
-pip install -r requirements.txt
-uvicorn src.main:app --reload --port 8000
-
-# Frontend (new terminal)
-cd apps/web
-npm install
-npm run dev
-```
-
-### Running Tests
-
-```bash
-# Core engine (42 tests)
-cd packages/core && python -m pytest tests/ -v
-
-# API (37 tests)
-cd apps/api && python -m pytest tests/ -v
+# Development setup
+cd apps/api && pip install -r requirements.txt && uvicorn src.main:app --reload
+cd apps/web && npm install && npm run dev
 ```
 
 ---
 
-## Roadmap
+## 📄 License
 
-- [x] **v0.8** - Extended Hours (EH) system, time-aware AI narrative
-- [x] **v0.7** - Responsive design, smart chart ranges
-- [x] **v0.6** - Bloomberg-style terminal UI
-- [x] **v0.5** - TwelveData provider, VSA indicators
-- [x] **v0.4** - i18n (Chinese/English)
-- [ ] **v1.0** - Signal evaluation tracking, auto-triggered AI updates
-- [ ] **v1.1** - Dark mode, WebSocket streaming
-- [ ] **v2.0** - Multi-timeframe alignment, mobile support
+MIT License — Use freely for personal or commercial projects.
 
 ---
 
-## Contributing
+## ⚠️ Disclaimer
 
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-### Quick Links
-- [Open Issues](https://github.com/songzhiyuan98/KLineLens/issues)
-- [TODO List](docs/TODO.md)
-- [Collaboration Guide](CLAUDE.md)
-
-### Adding a Provider
-
-1. Implement `MarketDataProvider` interface
-2. Add to `providers/__init__.py`
-3. Update `.env.example`
-4. Submit PR
-
----
-
-## License
-
-[MIT License](LICENSE) - Use it freely, commercially or personally.
-
----
-
-## Disclaimer
-
-**For educational purposes only.** This tool provides technical analysis based on price and volume data. It does not constitute financial advice. Always do your own research. Trade at your own risk.
+**For educational and informational purposes only.** This tool provides technical analysis based on price and volume data. It does not constitute financial advice. Past performance does not guarantee future results. Always do your own research and trade at your own risk.
 
 ---
 
 <p align="center">
-  <sub>Built with ❤️ for traders who want to understand market structure</sub>
+  <strong>If KLineLens helps your trading, consider giving it a ⭐</strong>
+  <br>
+  <sub>Built with ❤️ by traders, for traders</sub>
 </p>

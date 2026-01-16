@@ -4,7 +4,7 @@ KLineLens 核心引擎包
 纯 Python 实现的市场结构分析库。
 设计原则: 确定性 - 相同的输入 K 线数据产生相同的分析报告。
 
-核心功能（将在 Milestone 2-3 实现）:
+核心功能:
 - analyze_market: 完整市场分析入口
 - calculate_features: 技术指标计算
 - find_swing_points: 波段高低点识别
@@ -14,7 +14,10 @@ KLineLens 核心引擎包
 - TimelineManager: 时间线事件管理
 - generate_playbook: 条件剧本生成
 
-版本: 0.1.0
+子模块:
+- sim_trader: 0DTE 交易计划模块 (from src.sim_trader import create_sim_trader)
+
+版本: 0.2.0
 """
 
 __version__ = "0.1.0"
