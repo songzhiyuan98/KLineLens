@@ -21,12 +21,11 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License" />
+  <a href="https://github.com/songzhiyuan98/KLineLens/releases"><img src="https://img.shields.io/github/v/release/songzhiyuan98/KLineLens?color=blue&label=release" alt="Release" /></a>
+  <a href="https://github.com/songzhiyuan98/KLineLens/actions/workflows/ci.yml"><img src="https://github.com/songzhiyuan98/KLineLens/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/songzhiyuan98/KLineLens/stargazers"><img src="https://img.shields.io/github/stars/songzhiyuan98/KLineLens?style=flat&color=yellow" alt="Stars" /></a>
+  <a href="https://github.com/songzhiyuan98/KLineLens/blob/main/LICENSE"><img src="https://img.shields.io/github/license/songzhiyuan98/KLineLens?color=green" alt="License" /></a>
   <img src="https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker&logoColor=white" alt="Docker" />
-  <img src="https://img.shields.io/badge/python-3.11+-3776AB.svg?logo=python&logoColor=white" alt="Python" />
-  <img src="https://img.shields.io/badge/next.js-14-000000.svg?logo=next.js&logoColor=white" alt="Next.js" />
-  <img src="https://img.shields.io/badge/i18n-中文%20%7C%20English-blue.svg" alt="i18n" />
-  <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" />
 </p>
 
 <p align="center">

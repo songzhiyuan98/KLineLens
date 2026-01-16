@@ -24,8 +24,15 @@ If applicable, add screenshots.
 ## Environment
 - OS: [e.g., macOS 14, Windows 11]
 - Browser: [e.g., Chrome 120]
-- Version: [e.g., 0.7.0]
+- Docker: [e.g., 24.0.7]
+- KLineLens Version: [e.g., v0.8.0]
 - Provider: [e.g., yahoo, twelvedata]
+- Ticker: [e.g., TSLA, QQQ]
+
+## Logs
+```
+Paste relevant logs here (docker compose logs api)
+```
 
 ## Additional Context
 Any other context about the problem.
