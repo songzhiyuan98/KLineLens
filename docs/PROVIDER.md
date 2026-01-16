@@ -78,9 +78,9 @@ TWELVEDATA_API_KEY=your_api_key_here
 3. **3-Factor Confirmation**: 有了可靠成交量，可以启用完整的突破确认（Structure + Volume + Result）
 4. **Free Tier Sufficient**: 800 credits/day 对于个人分析足够
 
-### 3.2 Yahoo Finance (Fallback)
+### 3.2 Yahoo Finance (Fallback + Free EH Source)
 
-**Status**: ✅ Implemented
+**Status**: ✅ Implemented (含 Extended Hours 支持)
 
 | Feature | Value |
 |---------|-------|
@@ -91,11 +91,34 @@ TWELVEDATA_API_KEY=your_api_key_here
 | Timeframes | 1m, 5m, 1d |
 | Coverage | US stocks, ETFs, crypto, forex |
 | Volume Quality | ⚠️ **分钟级数据有缺失** |
+| **Extended Hours** | ✅ **支持 prepost=True** |
 
 **Configuration**:
 ```bash
 PROVIDER=yfinance
 ```
+
+**Extended Hours 支持** (免费方案):
+
+Yahoo Finance 支持通过 `prepost=True` 获取盘前盘后数据：
+
+```python
+# 获取含 Extended Hours 的数据
+provider = YFinanceProvider()
+bars = provider.get_bars_extended("TSLA", "1m", "2d")
+```
+
+| EH 功能 | 支持情况 | 说明 |
+|---------|---------|------|
+| 盘前数据 (04:00-09:30 ET) | ✅ | PMH/PML 提取 |
+| 盘后数据 (16:00-20:00 ET) | ✅ | AHH/AHL 提取 |
+| 实时 EH | ⚠️ 延迟 15-20 分钟 | 非实时，但足够分析用 |
+| EH 成交量 | ⚠️ 可能不完整 | EH 时段本身成交量低 |
+
+**MVP 推荐用法**:
+- TwelveData 做正盘主数据源
+- Yahoo Finance 补充盘前盘后结构
+- 解决开盘断层问题，免费无成本
 
 **Limitations**:
 | Limitation | Impact | Workaround |
@@ -104,11 +127,13 @@ PROVIDER=yfinance
 | ~2000 req/day | Rate limit | Cache aggressively (60s TTL) |
 | 15-20 min delay | Not real-time | Acceptable for structure analysis |
 | **分钟成交量不稳定** | **量价确认不可靠** | 切换到 TwelveData/Alpaca |
+| EH 数据偶尔缺失 | 某些 bar 可能丢失 | 用于关键位提取足够 |
 
 **When to Use Yahoo**:
 - 快速测试，不需要 API Key
 - 加密货币数据（BTC-USD, ETH-USD）
 - 日线级别分析（1d timeframe）
+- ✅ **免费获取 Extended Hours 数据**（填补开盘断层）
 - ⚠️ 不推荐用于依赖量价确认的分钟级分析
 
 ### 3.3 Alpaca (Free Alternative)

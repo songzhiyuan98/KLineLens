@@ -26,10 +26,11 @@ import numpy as np
 
 from .models import Bar, AnalysisReport, MarketState, Signal
 from .features import calculate_features, get_volume_quality
-from .structure import find_swing_points, cluster_zones, classify_regime, BreakoutFSM
+from .structure import find_swing_points, cluster_zones, classify_regime, BreakoutFSM, inject_eh_levels_as_zones
 from .behavior import infer_behavior
 from .timeline import TimelineManager, TimelineState
 from .playbook import generate_playbook
+from .extended_hours import EHContext, EHLevels
 
 
 @dataclass
@@ -150,9 +151,10 @@ def analyze_market(bars: List[Bar],
                    ticker: str = "UNKNOWN",
                    timeframe: str = "1d",
                    params: Optional[AnalysisParams] = None,
-                   state: Optional[AnalysisState] = None) -> AnalysisReport:
+                   state: Optional[AnalysisState] = None,
+                   eh_context: Optional[EHContext] = None) -> AnalysisReport:
     """
-    主市场分析函数（增强版）
+    主市场分析函数（增强版 + EH 集成）
 
     参数:
         bars: K 线列表（建议至少 50 根）
@@ -160,6 +162,7 @@ def analyze_market(bars: List[Bar],
         timeframe: 时间周期字符串（"1m", "5m", "1d"）
         params: 分析参数（默认使用 AnalysisParams()）
         state: 先前分析状态（用于增量更新）
+        eh_context: Extended Hours 上下文（可选，用于增强分析）
 
     返回:
         完整的 AnalysisReport（含 volume_quality）
@@ -173,16 +176,23 @@ def analyze_market(bars: List[Bar],
         3. 评估成交量数据质量
         4. 查找摆动点
         5. 聚类区域（增强版 Zone Strength）
+        5b. 注入 EH levels 作为关键区域（如有 eh_context）
         6. 分类趋势
         7. 运行 3-Factor 突破状态机获取信号
         8. 推断行为（含 VSA 吸收检测）
         9. 更新时间线（含 Soft Events）
-        10. 生成 Playbook
+        10. 生成 Playbook（含 EH context 影响）
         11. 组装并返回 AnalysisReport
 
     确定性:
         相同的 bars 和 params，输出相同。
         state 影响时间线事件，但不影响其他输出。
+
+    EH 集成:
+        当提供 eh_context 时:
+        - YC/PMH/PML/AHH/AHL 被添加为关键 zones
+        - Premarket regime 影响 playbook 建议
+        - Gap 信息用于开盘策略
     """
     # 使用默认参数
     if params is None:
@@ -221,6 +231,16 @@ def analyze_market(bars: List[Bar],
         max_zones=params.max_zones,
         current_bar_index=current_bar_index
     )
+
+    # 5b. 注入 EH levels 作为关键区域
+    current_price = features['close'][-1]
+    if eh_context is not None:
+        zones = inject_eh_levels_as_zones(
+            zones,
+            eh_context.levels,
+            current_price,
+            current_atr
+        )
 
     # 6. 分类趋势
     market_state = classify_regime(
@@ -341,14 +361,14 @@ def analyze_market(bars: List[Bar],
         # 按时间排序
         all_timeline_events.sort(key=lambda e: e.ts, reverse=True)
 
-    # 10. 生成 Playbook
-    current_price = features['close'][-1]
+    # 10. 生成 Playbook（含 EH context 影响）
     playbook = generate_playbook(
         market_state,
         zones,
         signals,
         current_atr,
-        current_price
+        current_price,
+        eh_context=eh_context
     )
 
     # 11. 检测数据缺口

@@ -6,7 +6,7 @@
 
 import useSWR, { useSWRConfig } from 'swr';
 import { useState, useCallback } from 'react';
-import { fetchBars, fetchAnalysis, fetchNarrative, BarsResponse, AnalysisReport, NarrativeResponse, ReportType } from './api';
+import { fetchBars, fetchAnalysis, fetchNarrative, fetchEHContext, BarsResponse, AnalysisReport, NarrativeResponse, ReportType, EHContextResponse } from './api';
 
 /** 刷新间隔 (60秒) */
 const REFRESH_INTERVAL = 60 * 1000;
@@ -135,5 +135,44 @@ export function useNarrative(
     generateConfirmation,
     generateContext,
     clear,
+  };
+}
+
+/**
+ * 获取 Extended Hours 上下文 Hook
+ *
+ * 提供盘前/盘后关键位和市场先验信息。
+ *
+ * @param ticker - 股票代码
+ * @param tf - 时间周期 (1m, 5m)
+ * @param options - 配置选项
+ */
+export function useEHContext(
+  ticker: string | undefined,
+  tf: string = '1m',
+  options: { refreshInterval?: number; enabled?: boolean } = {}
+) {
+  const enabled = options.enabled !== false;
+
+  const { data, error, isLoading, mutate } = useSWR<EHContextResponse>(
+    ticker && enabled && (tf === '1m' || tf === '5m')
+      ? `eh:${ticker}:${tf}`
+      : null,
+    () => fetchEHContext(ticker!, tf, true),
+    {
+      refreshInterval: options.refreshInterval ?? REFRESH_INTERVAL,
+      revalidateOnFocus: false,
+      // EH 数据不那么关键，出错时不重试
+      shouldRetryOnError: false,
+    }
+  );
+
+  return {
+    ehContext: data,
+    ehLevels: data?.levels,
+    dataQuality: data?.data_quality,
+    error,
+    isLoading,
+    refresh: mutate,
   };
 }

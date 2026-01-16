@@ -569,7 +569,111 @@ PlaybookPlan = {
 
 ---
 
-## 8. Multi-Timeframe Logic (Future Enhancement)
+## 8. Extended Hours (EH) Integration
+
+### 8.1 EH Levels as Key Zones
+
+When EH context is available, key levels from extended hours are injected into the zone system as high-priority reference levels.
+
+**Injection Logic:**
+```python
+def inject_eh_levels_as_zones(zones, eh_levels, current_price, atr):
+    """
+    将 EH 关键位注入到现有 zone 系统
+    EH levels 作为高优先级的参考位加入 zones
+    """
+    # 根据当前价格决定 support/resistance 归属
+    # 价格上方 → resistance
+    # 价格下方 → support
+```
+
+**Zone Score Assignment:**
+
+| Level | Score | Rationale |
+|-------|-------|-----------|
+| YC | 0.85 | 磁吸位，始终重要 |
+| PMH/PML | 0.80 | 盘前极值，高参考价值 |
+| YH/YL | 0.75 | 前日极值 |
+| AHH/AHL | 0.70 | 盘后参考 |
+
+**Zone Properties:**
+- `touches = 1` (单点形成)
+- `rejections = 0` (尚无交互历史)
+- `bar_index = -1` (非 K 线形成)
+- `eh_source` 属性标记来源
+
+### 8.2 Premarket Regime Influence on Playbook
+
+EH context affects playbook generation through `eh_context` parameter:
+
+```python
+def generate_playbook(..., eh_context: Optional[EHContext] = None):
+    """
+    生成条件交易计划（含 EH 上下文影响）
+    """
+```
+
+**Gap Fill Bias Plan:**
+
+When `premarket_regime == "gap_fill_bias"` and gap is significant:
+
+```python
+if gap > 0:  # 正缺口
+    # 添加 "Gap Fill Short" 计划
+    PlaybookPlan(
+        name="Plan EH",
+        condition="condition.gap_fill_short",
+        target=yc,  # 目标回归 YC
+        invalidation=current_price + atr * 0.5
+    )
+else:  # 负缺口
+    # 添加 "Gap Fill Long" 计划
+    PlaybookPlan(
+        name="Plan EH",
+        condition="condition.gap_fill_long",
+        target=yc,
+        invalidation=current_price - atr * 0.5
+    )
+```
+
+**Gap & Go Priority:**
+
+When `premarket_regime == "gap_and_go"`:
+- Existing breakout/breakdown plans get elevated priority
+- Plan name changed to "Plan A (EH)" to indicate EH-confirmed momentum
+
+**Range Day Setup:**
+
+When `premarket_regime == "range_day_setup"`:
+- Standard range plans maintained
+- No additional modifications (caution advised)
+
+### 8.3 EH-Specific Playbook Conditions
+
+| Condition Key | Description |
+|---------------|-------------|
+| `condition.gap_fill_short` | Gap fill setup - short toward YC |
+| `condition.gap_fill_long` | Gap fill setup - long toward YC |
+| `condition.pullback_to_support` | Standard pullback to support |
+| `condition.breakout_continuation` | Breakout continuation setup |
+| `condition.resistance_rejection` | Resistance rejection setup |
+| `condition.breakdown_continuation` | Breakdown continuation setup |
+| `condition.support_bounce` | Range support bounce |
+| `condition.resistance_fade` | Range resistance fade |
+
+### 8.4 EH Risk Keys
+
+| Risk Key | Description |
+|----------|-------------|
+| `risk.gap_continuation` | Gap may continue instead of filling |
+| `risk.trend_continuation` | Counter-trend risk in trending market |
+| `risk.false_breakout` | Fakeout risk elevated |
+| `risk.range_break` | Range may break unexpectedly |
+| `risk.reversal` | Reversal risk in counter-trend setup |
+
+---
+
+## 9. Multi-Timeframe Logic (Future Enhancement)
 
 ### 8.1 Core Principle
 

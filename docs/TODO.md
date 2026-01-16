@@ -308,12 +308,89 @@
 
 ---
 
+## Milestone 11: Extended Hours (EH) System
+
+> Premarket/Afterhours Structure Completion Engine
+> Spec: `Docs/EH_SPEC.md`
+
+### Tasks
+- [x] **Phase 0: Free EH Data Source** (2026-01-15)
+  - [x] Add `get_bars_extended()` to YFinanceProvider with `prepost=True`
+  - [x] Update PROVIDER.md with Yahoo EH support
+  - [x] Update EH_SPEC.md with Yahoo as MVP option
+  - MVP 方案: TwelveData 正盘 + Yahoo prepost 盘前盘后（免费）
+- [x] **Phase 1: Data Layer** (2026-01-15)
+  - [x] YFinance provider with `prepost=True` parameter (免费)
+  - [x] Add `split_bars_by_session()` helper (Regular/PM/AH 分割)
+  - [x] Add `SessionBars` dataclass
+  - [x] Add `build_eh_context_from_bars()` high-level builder
+  - [x] Test extended hours data availability ✅ (648 PM + 780 Regular + 481 AH bars)
+  - [ ] Update TwelveData provider with `prepost=true` parameter (Pro tier, optional)
+- [x] **Phase 2: Core EH Module** (`packages/core/src/extended_hours.py`) (已有基础实现)
+  - [x] `EHLevels` dataclass (YC/YH/YL/PMH/PML/AHH/AHL/GAP)
+  - [x] `EHContext` dataclass (full output structure)
+  - [x] `extract_eh_levels_*()` - Extract key levels from bars
+  - [x] `generate_key_zones()` - Generate zones with roles
+  - [x] `assess_afterhours_risk()` - AH risk assessment
+  - [x] `build_eh_context()` - Main orchestrator
+  - [ ] `calculate_eh_metrics()` - EH_RVOL, EH_range_score (TODO)
+  - [ ] `classify_premarket_regime()` - 4-class classification (TODO)
+  - [ ] `detect_pm_absorption()` - Absorption pattern detection (TODO)
+- [x] **Phase 3: API Integration** (2026-01-15)
+  - [x] `GET /v1/eh-context?ticker=TSLA` endpoint
+  - [x] Support `use_eh` parameter for Yahoo EH data
+  - [x] Graceful fallback to minimal mode
+  - [ ] Update `/v1/analyze` with `include_eh` parameter (TODO)
+  - [ ] Integration tests (TODO)
+- [x] **Phase 4: Frontend** (2026-01-15)
+  - [x] Add `fetchEHContext` API function and types
+  - [x] Add `useEHContext` hook
+  - [x] Display EH levels on chart (YC/PMH/PML/AHH/AHL)
+    - YC: 橙色实线 (磁吸位)
+    - PMH/PML: 紫色虚线 (盘前)
+    - AHH/AHL: 靛蓝点线 (盘后)
+  - [x] Integrate EH data in detail page
+  - [x] EH Context panel (regime, bias, key zones)
+    - 显示盘前形态 (Trend Continuation / Gap & Go / Gap Fill / Range)
+    - 显示方向偏向 (Bullish / Bearish / Neutral)
+    - 显示置信度和关键位
+  - [x] Opening protection indicator (first 10 min)
+    - 仅在 1m 周期 + 开盘后前10分钟显示
+    - 黄色警告条，提示高波动风险
+  - [x] i18n for all EH strings (2026-01-15)
+- [x] **Phase 4b: EH Integration into Analysis System** (2026-01-15)
+  - [x] `inject_eh_levels_as_zones()` in structure.py
+  - [x] Add `eh_context` parameter to `analyze_market()` in analyze.py
+  - [x] Add EH-influenced playbook logic in playbook.py
+  - [x] Add gap fill plans (Plan EH) for gap_fill_bias regime
+  - [x] Elevate breakout plans for gap_and_go regime
+  - [x] Update ENGINE_SPEC.md with EH integration
+  - [x] Update API.md with `/v1/eh-context` endpoint
+- [ ] **Phase 5: Testing**
+  - [ ] Unit tests for `extended_hours.py`
+  - [ ] Integration test with real TwelveData EH data
+  - [ ] Test fallback when EH data unavailable
+
+### Data Source Notes
+- **Yahoo Finance (MVP 推荐)**: `prepost=True` 免费获取盘前盘后，延迟 15-20 分钟
+- TwelveData `prepost=true` parameter for extended hours
+- Historical EH data: Free tier (T-1 delay)
+- Real-time EH data: Pro plan required ($79/month)
+- Fallback: YC/YH/YL only if PM data unavailable
+
+### Acceptance
+- EH levels displayed on chart (PMH/PML/YC as key levels)
+- Premarket regime classified correctly
+- EH context available via API
+- Graceful fallback when EH data unavailable
+
+---
+
 ## Backlog (Post-MVP)
 
 - [ ] K线 Tooltip 增强 (Volume/RVOL/Effort/Result)
 - [ ] Multi-timeframe analysis (1D + 1m alignment)
 - [ ] Redis cache for state persistence
-- [ ] WebSocket for real-time updates
 - [ ] Snapshot/replay feature
 - [ ] Polygon provider
 - [ ] Dark mode
@@ -347,3 +424,12 @@
   - [x] 移除页脚
   - [x] 智能图表可视范围
   - [x] 修复价格线重复
+- [x] Milestone 11: Extended Hours (EH) Phase 1-4 (2026-01-15)
+  - [x] Yahoo EH data source with prepost=True
+  - [x] EH levels API endpoint
+  - [x] Frontend EH context display
+  - [x] EH levels on chart
+  - [x] EH integration into analysis system
+  - [x] EH-influenced playbook generation
+  - [x] i18n for EH strings
+  - [x] Documentation updates (API.md, ENGINE_SPEC.md)

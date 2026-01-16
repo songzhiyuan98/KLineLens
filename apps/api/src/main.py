@@ -72,6 +72,7 @@ def _import_core_package():
         # 导入 core 的 src 包
         from src import analyze as core_analyze
         from src import models as core_models
+        from src import extended_hours as core_eh
     finally:
         # 恢复 API 的 src 模块
         if api_src:
@@ -82,11 +83,34 @@ def _import_core_package():
         core_analyze.analyze_market,
         core_analyze.AnalysisParams,
         core_models.Bar,
-        core_models.AnalysisReport
+        core_models.AnalysisReport,
+        # Extended Hours
+        core_eh.build_eh_context,
+        core_eh.get_yesterday_bars,
+        core_eh.EHContext,
+        core_eh.EHLevels,
+        # New EH functions
+        core_eh.split_bars_by_session,
+        core_eh.build_eh_context_from_bars,
+        core_eh.SessionBars,
     )
 
 # 导入 core 模块
-analyze_market, AnalysisParams, CoreBar, AnalysisReport = _import_core_package()
+(
+    analyze_market,
+    AnalysisParams,
+    CoreBar,
+    AnalysisReport,
+    # Extended Hours
+    build_eh_context,
+    get_yesterday_bars,
+    EHContext,
+    EHLevels,
+    # New EH functions
+    split_bars_by_session,
+    build_eh_context_from_bars,
+    SessionBars,
+) = _import_core_package()
 
 # 配置日志
 logging.basicConfig(
@@ -514,6 +538,183 @@ async def analyze(request: AnalyzeRequest):
             status_code=502,
             detail={"code": "PROVIDER_ERROR", "message": str(e)}
         )
+
+
+@app.get("/v1/eh-context")
+async def get_eh_context(
+    ticker: str = Query(..., description="股票代码（如 TSLA, AAPL）"),
+    tf: str = Query("1m", description="时间周期: 1m, 5m"),
+    use_eh: bool = Query(True, description="是否尝试获取 Extended Hours 数据"),
+):
+    """
+    获取 Extended Hours 上下文
+
+    提供盘前/盘后的关键位和市场先验信息。
+
+    数据质量级别:
+    - complete: 所有 EH 数据可用（今日盘前 + 昨日盘后）
+    - partial: 仅历史 EH 数据（昨日盘后）
+    - minimal: 仅 YC/YH/YL
+
+    数据源策略 (MVP):
+    - 优先使用 YFinance 的 prepost=True 获取免费 EH 数据
+    - 回退到普通数据（minimal 模式）
+
+    参数:
+        ticker: 股票代码
+        tf: 时间周期（默认 1m，仅支持 1m/5m）
+        use_eh: 是否尝试获取 EH 数据（默认 True）
+
+    返回:
+        EHContext 对象，包含:
+        - levels: 关键价位 (YC, YH, YL, 可能有 PMH, PML, AHH, AHL)
+        - premarket_regime: 盘前形态（complete 模式）
+        - key_zones: 带角色的关键区域列表
+        - ah_risk: 盘后风险评估
+        - data_quality: 数据质量级别
+    """
+    ticker = ticker.upper()
+    key = cache_key(ticker, tf, f"eh-context-{use_eh}")
+
+    # 检查缓存
+    cached = cache.get(key)
+    if cached:
+        return cached
+
+    try:
+        # 尝试获取 Extended Hours 数据
+        eh_bars = None
+        if use_eh and tf in ("1m", "5m"):
+            # 尝试使用 YFinance 获取 EH 数据（免费）
+            try:
+                from .providers.yfinance_provider import YFinanceProvider
+                yf_provider = YFinanceProvider()
+                eh_bars = yf_provider.get_bars_extended(ticker, tf, "2d")
+                logger.info(f"YFinance EH 数据获取成功: {ticker}, {len(eh_bars)} bars")
+            except Exception as e:
+                logger.warning(f"YFinance EH 数据获取失败，回退到普通模式: {e}")
+                eh_bars = None
+
+        if eh_bars and len(eh_bars) >= 100:
+            # 使用 EH 数据构建上下文
+            core_bars = [
+                CoreBar(t=bar.t, o=bar.o, h=bar.h, l=bar.l, c=bar.c, v=bar.v)
+                for bar in eh_bars
+            ]
+
+            # 使用新的 session 分割和构建函数
+            eh_context = build_eh_context_from_bars(core_bars)
+
+            # 添加数据来源信息
+            result = eh_context_to_dict(eh_context)
+            result["data_source"] = "yfinance_prepost"
+
+        else:
+            # 回退到普通数据（minimal 模式）
+            window = "3d" if tf == "1m" else "5d"
+            bars = provider.get_bars(ticker, tf, window)
+
+            if len(bars) < 100:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "code": "INSUFFICIENT_DATA",
+                        "message": f"数据不足: 需要至少 100 根 K 线，实际 {len(bars)}"
+                    }
+                )
+
+            # 转换为 core Bar 类型
+            core_bars = [
+                CoreBar(t=bar.t, o=bar.o, h=bar.h, l=bar.l, c=bar.c, v=bar.v)
+                for bar in bars
+            ]
+
+            # 分离昨日和今日数据
+            yesterday_bars, today_bars = get_yesterday_bars(core_bars)
+
+            if not yesterday_bars:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "code": "NO_YESTERDAY_DATA",
+                        "message": "无法获取昨日数据，请确保有足够的历史 K 线"
+                    }
+                )
+
+            # 构建 EH 上下文（minimal 模式）
+            eh_context = build_eh_context(
+                yesterday_bars=yesterday_bars,
+                today_bars=today_bars,
+                yesterday_afterhours=None,
+                today_premarket=None,
+                current_price=today_bars[-1].c if today_bars else None,
+            )
+
+            result = eh_context_to_dict(eh_context)
+            result["data_source"] = "regular_only"
+
+        # 缓存（较短 TTL，因为 EH 数据敏感）
+        cache.set(key, result, ttl=30)
+
+        return result
+
+    except TickerNotFoundError as e:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "NO_DATA", "message": str(e)}
+        )
+    except RateLimitError as e:
+        raise HTTPException(
+            status_code=429,
+            detail={"code": "PROVIDER_RATE_LIMITED", "message": str(e)}
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "EH_ERROR", "message": str(e)}
+        )
+    except ProviderError as e:
+        raise HTTPException(
+            status_code=502,
+            detail={"code": "PROVIDER_ERROR", "message": str(e)}
+        )
+
+
+def eh_context_to_dict(ctx: EHContext) -> dict:
+    """将 EHContext 转换为 JSON 可序列化字典"""
+    return {
+        "levels": {
+            "yc": ctx.levels.yc,
+            "yh": ctx.levels.yh,
+            "yl": ctx.levels.yl,
+            "pmh": ctx.levels.pmh,
+            "pml": ctx.levels.pml,
+            "ahh": ctx.levels.ahh,
+            "ahl": ctx.levels.ahl,
+            "gap": ctx.levels.gap,
+        },
+        "premarket_regime": ctx.premarket_regime,
+        "premarket_bias": ctx.premarket_bias,
+        "regime_confidence": ctx.regime_confidence,
+        "eh_range_score": ctx.eh_range_score,
+        "eh_rvol": ctx.eh_rvol,
+        "key_zones": [
+            {"zone": z.zone, "price": z.price, "role": z.role}
+            for z in ctx.key_zones
+        ],
+        "pm_absorption": ctx.pm_absorption,
+        "ah_risk": {
+            "risk": ctx.ah_risk.risk,
+            "likely_behavior": ctx.ah_risk.likely_behavior,
+            "close_position": ctx.ah_risk.close_position,
+            "late_rvol": ctx.ah_risk.late_rvol,
+            "is_trend_day": ctx.ah_risk.is_trend_day,
+        } if ctx.ah_risk else None,
+        "expected_behaviors": ctx.expected_behaviors,
+        "generated_at": ctx.generated_at.isoformat() + "Z",
+        "data_quality": ctx.data_quality,
+        "data_quality_note": ctx.data_quality_note,
+    }
 
 
 @app.post("/v1/narrative")

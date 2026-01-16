@@ -16,12 +16,15 @@ KLineLens 市场结构检测模块（增强版）
 所有函数都是纯函数，确定性输出。
 """
 
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, TYPE_CHECKING
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 import numpy as np
 from .models import Bar, Zone, Signal, MarketState
+
+if TYPE_CHECKING:
+    from .extended_hours import EHLevels
 
 
 class BreakoutState(Enum):
@@ -633,3 +636,75 @@ class BreakoutFSM:
         self._consecutive_closes = 0
         self._max_volume_seen = 0.0
         self._max_result_seen = 0.0
+
+
+# ============ EH Levels Integration ============
+
+def inject_eh_levels_as_zones(
+    zones: Dict[str, List[Zone]],
+    eh_levels: "EHLevels",
+    current_price: float,
+    atr: float,
+) -> Dict[str, List[Zone]]:
+    """
+    将 EH 关键位注入到现有 zone 系统
+
+    EH levels (YC/PMH/PML/AHH/AHL) 作为高优先级的参考位加入 zones，
+    帮助分析系统识别关键支撑阻力。
+
+    参数:
+        zones: 现有的 zones 字典 {"support": [...], "resistance": [...]}
+        eh_levels: EH 关键位 (EHLevels 对象)
+        current_price: 当前价格（用于判断位置关系）
+        atr: 当前 ATR（用于计算 zone 宽度）
+
+    返回:
+        更新后的 zones 字典
+    """
+    if atr <= 0:
+        return zones
+
+    padding = atr * 0.3  # EH levels 使用较小的 padding
+
+    def _create_eh_zone(price: float, score: float, label: str) -> Zone:
+        """创建 EH zone"""
+        return Zone(
+            low=price - padding,
+            high=price + padding,
+            score=score,
+            touches=3,  # EH levels 假设有多次历史测试
+            rejections=2,
+            last_reaction=1.0,
+            last_test_time=None,
+        )
+
+    # YC 是磁吸位，始终重要
+    yc_zone = _create_eh_zone(eh_levels.yc, 0.85, "YC")
+    if eh_levels.yc < current_price:
+        zones["support"].append(yc_zone)
+    else:
+        zones["resistance"].append(yc_zone)
+
+    # YH/YL
+    if eh_levels.yh > current_price:
+        zones["resistance"].append(_create_eh_zone(eh_levels.yh, 0.75, "YH"))
+    if eh_levels.yl < current_price:
+        zones["support"].append(_create_eh_zone(eh_levels.yl, 0.75, "YL"))
+
+    # PMH/PML (如果有盘前数据)
+    if eh_levels.pmh is not None and eh_levels.pmh > current_price:
+        zones["resistance"].append(_create_eh_zone(eh_levels.pmh, 0.80, "PMH"))
+    if eh_levels.pml is not None and eh_levels.pml < current_price:
+        zones["support"].append(_create_eh_zone(eh_levels.pml, 0.80, "PML"))
+
+    # AHH/AHL (如果有盘后数据)
+    if eh_levels.ahh is not None and eh_levels.ahh > current_price:
+        zones["resistance"].append(_create_eh_zone(eh_levels.ahh, 0.70, "AHH"))
+    if eh_levels.ahl is not None and eh_levels.ahl < current_price:
+        zones["support"].append(_create_eh_zone(eh_levels.ahl, 0.70, "AHL"))
+
+    # 重新按 score 排序
+    zones["support"].sort(key=lambda z: z.score, reverse=True)
+    zones["resistance"].sort(key=lambda z: z.score, reverse=True)
+
+    return zones

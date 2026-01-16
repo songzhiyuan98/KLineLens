@@ -418,7 +418,76 @@ curl -X POST "http://localhost:8000/v1/analyze" \
 
 ---
 
-### 3. POST `/v1/signal-evaluation` — Record Signal Prediction
+### 3. GET `/v1/eh-context` — Get Extended Hours Context
+
+Fetch premarket/afterhours context for a ticker.
+
+#### Request
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `ticker` | string | Yes | Stock symbol (e.g., "TSLA") |
+| `use_eh` | bool | No | Force Yahoo EH data (default: true for 1m/5m) |
+
+#### Response 200 — EHContext
+
+```json
+{
+  "ticker": "TSLA",
+  "timestamp": "2026-01-15T14:30:00Z",
+  "session_status": "regular_hours",
+  "levels": {
+    "yc": 245.50,
+    "yh": 248.20,
+    "yl": 243.10,
+    "pmh": 246.80,
+    "pml": 244.20,
+    "ahh": 247.50,
+    "ahl": 244.80,
+    "gap": 1.30,
+    "gap_pct": 0.53
+  },
+  "premarket_regime": "trend_continuation",
+  "bias": "bullish",
+  "bias_confidence": 0.72,
+  "key_zones": [
+    {
+      "level": 245.50,
+      "role": "yc",
+      "importance": "critical"
+    },
+    {
+      "level": 246.80,
+      "role": "pmh",
+      "importance": "high"
+    }
+  ],
+  "ah_risk": {
+    "level": "medium",
+    "reason": "AH range 1.1% with moderate volume"
+  },
+  "opening_action": {
+    "bias": "bullish",
+    "watch_level": 246.80,
+    "invalidation": 244.20
+  }
+}
+```
+
+#### Response 404
+
+```json
+{
+  "error": {
+    "code": "NO_EH_DATA",
+    "message": "Extended hours data not available for this ticker"
+  }
+}
+```
+
+---
+
+### 4. POST `/v1/signal-evaluation` — Record Signal Prediction
 
 Record a new signal prediction for later evaluation.
 
@@ -575,6 +644,71 @@ Update the result of a signal prediction.
   "evaluated_at": "2026-01-14T20:15:00Z"
 }
 ```
+
+---
+
+## Schema Definitions (Extended Hours)
+
+### EHContext
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ticker` | string | Stock symbol |
+| `timestamp` | string | ISO 8601 timestamp |
+| `session_status` | string | `premarket`, `regular_hours`, `afterhours`, `closed` |
+| `levels` | EHLevels | Key price levels from extended hours |
+| `premarket_regime` | string | `trend_continuation`, `gap_and_go`, `gap_fill_bias`, `range_day_setup` |
+| `bias` | string | `bullish`, `bearish`, `neutral` |
+| `bias_confidence` | float | Confidence level (0-1) |
+| `key_zones` | EHKeyZone[] | Key levels with roles |
+| `ah_risk` | AHRisk | Afterhours risk assessment |
+| `opening_action` | OpeningAction | Opening strategy guidance |
+
+### EHLevels
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `yc` | float | Yesterday's Close (磁吸位) |
+| `yh` | float | Yesterday's High |
+| `yl` | float | Yesterday's Low |
+| `pmh` | float | Premarket High |
+| `pml` | float | Premarket Low |
+| `ahh` | float | Afterhours High (previous day) |
+| `ahl` | float | Afterhours Low (previous day) |
+| `gap` | float | Gap size (Open - YC) |
+| `gap_pct` | float | Gap percentage |
+
+### EHKeyZone
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `level` | float | Price level |
+| `role` | string | `yc`, `pmh`, `pml`, `ahh`, `ahl`, `gap_fill` |
+| `importance` | string | `critical`, `high`, `medium` |
+
+### AHRisk
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `level` | string | `low`, `medium`, `high` |
+| `reason` | string | Risk explanation |
+
+### OpeningAction
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `bias` | string | `bullish`, `bearish`, `neutral` |
+| `watch_level` | float | Key level to watch |
+| `invalidation` | float | Level that invalidates bias |
+
+### Premarket Regime Classification
+
+| Regime | Description |
+|--------|-------------|
+| `trend_continuation` | PM confirms prior day direction |
+| `gap_and_go` | Large gap with PM extension (momentum play) |
+| `gap_fill_bias` | Gap likely to fill toward YC |
+| `range_day_setup` | PM range-bound, expect consolidation |
 
 ---
 

@@ -27,6 +27,13 @@ from .behavior import infer_behavior, scores_to_probabilities
 from .timeline import TimelineManager, TimelineState
 from .playbook import generate_playbook
 from .backtest import run_backtest, aggregate_results, print_report, BacktestResult, AggregateResult
+from .extended_hours import (
+    EHLevels, EHKeyZone, AHRisk, EHContext, SessionBars,
+    extract_eh_levels_minimal, extract_eh_levels_partial, extract_eh_levels_complete,
+    generate_key_zones, assess_afterhours_risk, build_eh_context,
+    split_bars_by_day, get_yesterday_bars,
+    get_session_type, split_bars_by_session, build_eh_context_from_bars,
+)
 
 # 导出类型
 from .models import (
@@ -74,4 +81,21 @@ __all__ = [
     "MarketState",
     "Behavior",
     "AnalysisReport",
+    # Extended Hours
+    "EHLevels",
+    "EHKeyZone",
+    "AHRisk",
+    "EHContext",
+    "SessionBars",
+    "extract_eh_levels_minimal",
+    "extract_eh_levels_partial",
+    "extract_eh_levels_complete",
+    "generate_key_zones",
+    "assess_afterhours_risk",
+    "build_eh_context",
+    "split_bars_by_day",
+    "get_yesterday_bars",
+    "get_session_type",
+    "split_bars_by_session",
+    "build_eh_context_from_bars",
 ]

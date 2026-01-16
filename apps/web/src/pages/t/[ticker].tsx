@@ -15,7 +15,7 @@ import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 import Head from 'next/head';
 import { Layout, DetailPageSkeleton } from '../../components';
-import { useAnalysis, useBars } from '../../lib/hooks';
+import { useAnalysis, useBars, useEHContext } from '../../lib/hooks';
 import { useI18n, Language } from '../../lib/i18n';
 import {
   Evidence,
@@ -619,23 +619,23 @@ const s: Record<string, React.CSSProperties> = {
     gridTemplateColumns: '80px 80px 60px 1fr',
     gap: '1rem',
     padding: '0.5rem 0',
-    fontSize: F.medium,
+    fontSize: F.small,
     borderBottom: `1px solid ${C.dividerLight}`,
     cursor: 'pointer',
   },
   evidenceType: {
     fontWeight: 500,
     fontFamily: MONO,
-    fontSize: F.body,
+    fontSize: F.small,
   },
   evidenceSeverity: {
     fontFamily: MONO,
-    fontSize: F.body,
+    fontSize: F.small,
   },
   evidenceMetrics: {
     fontFamily: MONO,
     fontVariantNumeric: 'tabular-nums',
-    fontSize: F.body,
+    fontSize: F.small,
     color: C.textMuted,
   },
 
@@ -929,6 +929,13 @@ export default function TickerDetail() {
   );
   const { analysis, error: analysisError, isLoading: analysisLoading, refresh } = useAnalysis(
     ticker as string, timeframe, { refreshInterval: 60000 }
+  );
+
+  // Extended Hours 上下文（仅 1m/5m 时获取）
+  const { ehContext, ehLevels, dataQuality: ehDataQuality } = useEHContext(
+    ticker as string,
+    timeframe,
+    { enabled: timeframe === '1m' || timeframe === '5m' }
   );
 
   // Narrative 缓存（三个周期各自缓存）
@@ -1445,6 +1452,29 @@ export default function TickerDetail() {
     return t('idle');
   };
 
+  // Opening Protection - 开盘后前10分钟高波动警告
+  const isOpeningProtection = useMemo(() => {
+    // 只在 1m 周期检查
+    if (timeframe !== '1m') return false;
+    if (!bars || bars.length === 0) return false;
+
+    // 获取最新 bar 的时间
+    const latestBar = bars[bars.length - 1];
+    const latestTime = new Date(latestBar.t);
+
+    // 转换为 ET 时间（假设数据是 ET）
+    const hour = latestTime.getHours();
+    const minute = latestTime.getMinutes();
+    const timeInMinutes = hour * 60 + minute;
+
+    // 开盘时间: 09:30 ET = 570 分钟
+    // 开盘后10分钟: 09:40 ET = 580 分钟
+    const marketOpen = 570;
+    const protectionEnd = 580;
+
+    return timeInMinutes >= marketOpen && timeInMinutes < protectionEnd;
+  }, [timeframe, bars]);
+
   // Decision Line - Bloomberg-style action/trigger/risk
   const getDecisionLine = (): {
     actionKey: string;
@@ -1726,6 +1756,27 @@ export default function TickerDetail() {
               <div style={s.grid}>
                 {/* ===== Left: Chart ===== */}
                 <div style={s.chartSection}>
+                  {/* Opening Protection Warning */}
+                  {isOpeningProtection && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.5rem 0.75rem',
+                      marginBottom: '0.5rem',
+                      backgroundColor: '#fef3c7',
+                      borderRadius: '4px',
+                      fontSize: F.small,
+                      fontFamily: MONO,
+                      color: '#92400e',
+                    }}>
+                      <span style={{ fontSize: '1rem' }}>⚠️</span>
+                      <span style={{ fontWeight: 500 }}>
+                        {t('opening_protection_title')} - {t('opening_protection_warning')}
+                      </span>
+                    </div>
+                  )}
+
                   {/* Chart Header (status line) */}
                   <div style={s.chartHeader}>
                     <div style={s.chartHeaderLeft}>
@@ -1761,6 +1812,7 @@ export default function TickerDetail() {
                       onClearHighlight={() => setHighlightedBarTime(null)}
                       currentPrice={currentPrice}
                       timeframe={timeframe}
+                      ehLevels={ehLevels}
                     />
                   </div>
 
@@ -2161,6 +2213,59 @@ export default function TickerDetail() {
 
                 {/* ===== Right: Insight Rail ===== */}
                 <div style={s.panel}>
+                  {/* Section: Premarket Context Strip (1m/5m only) */}
+                  {ehContext && (timeframe === '1m' || timeframe === '5m') && (
+                    <div style={s.section}>
+                      <div style={s.sectionTitle}>{t('eh_context')}</div>
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        width: '100%',
+                      }}>
+                        {/* 形态 - 大字显示 */}
+                        <span style={{
+                          fontSize: F.large,
+                          fontWeight: 600,
+                          fontFamily: MONO,
+                          color: ehContext.premarket_regime === 'trend_continuation' ? C.bullish
+                               : ehContext.premarket_regime === 'gap_and_go' ? C.accent
+                               : ehContext.premarket_regime === 'gap_fill_bias' ? C.warn
+                               : C.textSecondary,
+                        }}>
+                          {t(`eh_regime_${ehContext.premarket_regime || 'unavailable'}`)}
+                        </span>
+                        {/* 右侧：偏向 + 缺口 */}
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.75rem',
+                          fontSize: F.small,
+                          fontFamily: MONO,
+                        }}>
+                          {/* 偏向 + 置信度 */}
+                          <span style={{
+                            color: ehContext.premarket_bias === 'bullish' ? C.bullish
+                                 : ehContext.premarket_bias === 'bearish' ? C.bearish
+                                 : C.textSecondary,
+                          }}>
+                            {ehContext.premarket_bias === 'bullish' ? '↑' : ehContext.premarket_bias === 'bearish' ? '↓' : '↔'}
+                            {' '}{t(`eh_bias_${ehContext.premarket_bias || 'neutral'}`)} {Math.round(ehContext.regime_confidence * 100)}%
+                          </span>
+                          {/* 缺口 */}
+                          {ehContext.levels.gap !== 0 && (
+                            <span style={{
+                              color: ehContext.levels.gap > 0 ? C.bullish : C.bearish,
+                              fontWeight: 500,
+                            }}>
+                              Gap {ehContext.levels.gap > 0 ? '+' : ''}{ehContext.levels.gap.toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Section: Summary - Vertical List */}
                   <div style={s.section}>
                     <div style={s.sectionTitle}>{t('summary')}</div>
@@ -2298,7 +2403,7 @@ export default function TickerDetail() {
                   </div>
 
                   {/* Section: Key Zones - Table format with explanations */}
-                  <div style={s.section}>
+                  <div style={{ ...s.section, ...s.sectionLast }}>
                     <div style={s.sectionTitle}>{t('key_zones')}</div>
                     <div style={s.zonesTable}>
 
@@ -2384,28 +2489,6 @@ export default function TickerDetail() {
                     </div>
                   </div>
 
-                  {/* Section: Timeline - Vertical with dots */}
-                  <div style={{ ...s.section, ...s.sectionLast }}>
-                    <div style={s.sectionTitle}>{t('timeline')}</div>
-                    {filteredTimeline.length === 0 ? (
-                      <div style={{ color: C.textMuted, fontSize: '0.75rem' }}>{t('no_significant_events')}</div>
-                    ) : (
-                      <div style={s.timelineContainer}>
-                        {filteredTimeline.slice(0, 6).map((event, i) => (
-                          <div
-                            key={i}
-                            onClick={() => handleTimelineClick(event)}
-                            style={s.timelineItem}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = C.dividerLight}
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                          >
-                            <span style={s.timelineTime}>{formatTime(event.ts)}</span>
-                            <span style={s.timelineText}>{getEventText(event)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
                 </div>
               </div>
             </>

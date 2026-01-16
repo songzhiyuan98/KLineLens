@@ -473,3 +473,78 @@ export async function fetchWatchlistStatus(ticker: string): Promise<WatchlistSta
 
   return res.json();
 }
+
+
+// ============ Extended Hours (EH) Types ============
+
+/** EH 关键价位 */
+export interface EHLevels {
+  yc: number;              // 昨收 Yesterday Close
+  yh: number;              // 昨高 Yesterday High
+  yl: number;              // 昨低 Yesterday Low
+  pmh: number | null;      // 盘前高 Premarket High
+  pml: number | null;      // 盘前低 Premarket Low
+  ahh: number | null;      // 盘后高 Afterhours High
+  ahl: number | null;      // 盘后低 Afterhours Low
+  gap: number;             // 缺口
+}
+
+/** EH 关键区域 */
+export interface EHKeyZone {
+  zone: string;    // YC, YH, YL, PMH, PML, AHH, AHL
+  price: number;
+  role: string;    // magnet, major_resistance, major_support, breakout_trigger, etc.
+}
+
+/** AH 风险评估 */
+export interface AHRisk {
+  risk: string;            // low, medium, high
+  likely_behavior: string; // continuation, mean_revert, drift
+  close_position: number;  // 0-1
+  late_rvol: number;
+  is_trend_day: boolean;
+}
+
+/** EH 上下文响应 */
+export interface EHContextResponse {
+  levels: EHLevels;
+  premarket_regime: string;      // trend_continuation, gap_and_go, gap_fill_bias, range_day_setup, unavailable
+  premarket_bias: string;        // bullish, bearish, neutral
+  regime_confidence: number;
+  eh_range_score: number;
+  eh_rvol: number;
+  key_zones: EHKeyZone[];
+  pm_absorption: Record<string, unknown> | null;
+  ah_risk: AHRisk | null;
+  expected_behaviors: string[];
+  generated_at: string;
+  data_quality: string;          // complete, partial, minimal
+  data_quality_note: string;
+  data_source: string;           // yfinance_prepost, regular_only
+}
+
+/**
+ * 获取 Extended Hours 上下文
+ *
+ * 提供盘前/盘后关键位（PMH/PML/YC/AHH/AHL）和市场先验信息。
+ */
+export async function fetchEHContext(
+  ticker: string,
+  tf: string = '1m',
+  useEH: boolean = true
+): Promise<EHContextResponse> {
+  const params = new URLSearchParams({
+    ticker,
+    tf,
+    use_eh: useEH.toString(),
+  });
+
+  const res = await fetch(`${API_BASE}/v1/eh-context?${params}`);
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail?.message || 'Failed to fetch EH context');
+  }
+
+  return res.json();
+}

@@ -15,7 +15,7 @@ import {
   LineData,
   Time,
 } from 'lightweight-charts';
-import { Bar, Zone } from '../lib/api';
+import { Bar, Zone, EHLevels } from '../lib/api';
 
 interface CandlestickChartProps {
   bars: Bar[];
@@ -29,6 +29,7 @@ interface CandlestickChartProps {
   onClearHighlight?: () => void;
   currentPrice?: number;  // For calculating R1/R2/S1/S2
   timeframe?: string;  // For smart default visible range
+  ehLevels?: EHLevels | null;  // Extended Hours levels (YC/PMH/PML/AHH/AHL)
 }
 
 // 计算 Volume MA
@@ -72,6 +73,7 @@ export default function CandlestickChart({
   onClearHighlight,
   currentPrice,
   timeframe = '5m',
+  ehLevels = null,
 }: CandlestickChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -363,7 +365,84 @@ export default function CandlestickChart({
       });
       priceLinesRef.current.push(line);
     }
-  }, [supportZones, resistanceZones, chartReady, darkMode, currentPrice, bars]);
+
+    // ====== Extended Hours Levels ======
+    // 使用独特的颜色和样式区分 EH levels
+    const ehColors = {
+      yc: '#f59e0b',      // 昨收 - 橙色（磁吸位）
+      pmh: '#8b5cf6',     // 盘前高 - 紫色
+      pml: '#8b5cf6',     // 盘前低 - 紫色
+      ahh: '#6366f1',     // 盘后高 - 靛蓝
+      ahl: '#6366f1',     // 盘后低 - 靛蓝
+    };
+
+    if (ehLevels) {
+      // YC (昨收) - 最重要的磁吸位
+      if (ehLevels.yc) {
+        const line = series.createPriceLine({
+          price: ehLevels.yc,
+          color: ehColors.yc,
+          lineWidth: 2,
+          lineStyle: 0,  // 实线
+          axisLabelVisible: true,
+          title: 'YC',
+        });
+        priceLinesRef.current.push(line);
+      }
+
+      // PMH (盘前高)
+      if (ehLevels.pmh) {
+        const line = series.createPriceLine({
+          price: ehLevels.pmh,
+          color: ehColors.pmh,
+          lineWidth: 1,
+          lineStyle: 2,  // 虚线
+          axisLabelVisible: true,
+          title: 'PMH',
+        });
+        priceLinesRef.current.push(line);
+      }
+
+      // PML (盘前低)
+      if (ehLevels.pml) {
+        const line = series.createPriceLine({
+          price: ehLevels.pml,
+          color: ehColors.pml,
+          lineWidth: 1,
+          lineStyle: 2,  // 虚线
+          axisLabelVisible: true,
+          title: 'PML',
+        });
+        priceLinesRef.current.push(line);
+      }
+
+      // AHH (盘后高) - 点线
+      if (ehLevels.ahh) {
+        const line = series.createPriceLine({
+          price: ehLevels.ahh,
+          color: ehColors.ahh,
+          lineWidth: 1,
+          lineStyle: 3,  // 点线
+          axisLabelVisible: false,  // 不显示标签避免拥挤
+          title: '',
+        });
+        priceLinesRef.current.push(line);
+      }
+
+      // AHL (盘后低) - 点线
+      if (ehLevels.ahl) {
+        const line = series.createPriceLine({
+          price: ehLevels.ahl,
+          color: ehColors.ahl,
+          lineWidth: 1,
+          lineStyle: 3,  // 点线
+          axisLabelVisible: false,
+          title: '',
+        });
+        priceLinesRef.current.push(line);
+      }
+    }
+  }, [supportZones, resistanceZones, chartReady, darkMode, currentPrice, bars, ehLevels]);
 
   // 高亮特定 bar (Evidence 定位)
   useEffect(() => {

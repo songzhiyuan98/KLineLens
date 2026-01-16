@@ -109,6 +109,8 @@ const translations: Record<Language, Record<string, string>> = {
     'evidence.distribution.near_resistance': '价格接近阻力区域',
     'evidence.distribution.high_volume_at_resistance': '阻力位放量出货',
     'evidence.distribution.rejection_wick': '上影线显示卖压拒绝',
+    'evidence.distribution.absorption': '派发吸收（机构出货）',
+    'distribution absorption': '派发吸收',
     'evidence.markdown.downtrend_continuation': '下降趋势延续',
     'evidence.markdown.volume_confirmation': '成交量确认下跌',
 
@@ -485,6 +487,55 @@ const translations: Record<Language, Record<string, string>> = {
     'record_prediction': '记录预测',
     'up': '上涨',
     'down': '下跌',
+
+    // Extended Hours (EH) Context
+    'eh_context': '盘前上下文',
+    'eh_regime': '形态',
+    'eh_bias': '偏向',
+    'eh_confidence': '置信度',
+    'eh_key_levels': '关键位',
+    'eh_gap': '缺口',
+    'eh_data_quality': '数据质量',
+
+    // EH Regimes
+    'eh_regime_trend_continuation': '趋势延续',
+    'eh_regime_gap_and_go': '跳空突破',
+    'eh_regime_gap_fill_bias': '回补缺口',
+    'eh_regime_range_day_setup': '震荡日',
+    'eh_regime_unavailable': '数据不足',
+
+    // EH Bias
+    'eh_bias_bullish': '看涨',
+    'eh_bias_bearish': '看跌',
+    'eh_bias_neutral': '中性',
+
+    // EH Data Quality
+    'eh_quality_complete': '完整',
+    'eh_quality_partial': '部分',
+    'eh_quality_minimal': '基础',
+
+    // EH Zone Labels
+    'eh_zone_yc': '昨收',
+    'eh_zone_yh': '昨高',
+    'eh_zone_yl': '昨低',
+    'eh_zone_pmh': '盘前高',
+    'eh_zone_pml': '盘前低',
+    'eh_zone_ahh': '盘后高',
+    'eh_zone_ahl': '盘后低',
+    'eh_zone_magnet': '磁吸位',
+    'eh_zone_resistance': '强阻力',
+    'eh_zone_support': '强支撑',
+    'eh_zone_breakout_trigger': '突破触发',
+    'eh_zone_gap_target': '缺口目标',
+
+    // Opening Protection
+    'opening_protection_warning': '波动剧烈，谨慎操作',
+    'opening_protection_title': '开盘保护期（前10分钟）',
+
+    // EH Playbook Conditions
+    'condition.gap_fill_short': '缺口回补做空',
+    'condition.gap_fill_long': '缺口回补做多',
+    'risk.gap_continuation': '缺口延续风险',
   },
   en: {
     // General
@@ -956,6 +1007,55 @@ const translations: Record<Language, Record<string, string>> = {
     'record_prediction': 'Record Prediction',
     'up': 'Up',
     'down': 'Down',
+
+    // Extended Hours (EH) Context
+    'eh_context': 'PREMARKET CONTEXT',
+    'eh_regime': 'REGIME',
+    'eh_bias': 'BIAS',
+    'eh_confidence': 'CONF',
+    'eh_key_levels': 'KEY LEVELS',
+    'eh_gap': 'GAP',
+    'eh_data_quality': 'Data Quality',
+
+    // EH Regimes
+    'eh_regime_trend_continuation': 'Trend Continuation',
+    'eh_regime_gap_and_go': 'Gap & Go',
+    'eh_regime_gap_fill_bias': 'Gap Fill Bias',
+    'eh_regime_range_day_setup': 'Range Day',
+    'eh_regime_unavailable': 'Unavailable',
+
+    // EH Bias
+    'eh_bias_bullish': 'Bullish',
+    'eh_bias_bearish': 'Bearish',
+    'eh_bias_neutral': 'Neutral',
+
+    // EH Data Quality
+    'eh_quality_complete': 'Complete',
+    'eh_quality_partial': 'Partial',
+    'eh_quality_minimal': 'Minimal',
+
+    // EH Zone Labels
+    'eh_zone_yc': 'YC',
+    'eh_zone_yh': 'YH',
+    'eh_zone_yl': 'YL',
+    'eh_zone_pmh': 'PM High',
+    'eh_zone_pml': 'PM Low',
+    'eh_zone_ahh': 'AH High',
+    'eh_zone_ahl': 'AH Low',
+    'eh_zone_magnet': 'Magnet',
+    'eh_zone_resistance': 'Resistance',
+    'eh_zone_support': 'Support',
+    'eh_zone_breakout_trigger': 'Breakout Trigger',
+    'eh_zone_gap_target': 'Gap Target',
+
+    // Opening Protection
+    'opening_protection_warning': 'High volatility, trade with caution',
+    'opening_protection_title': 'Opening Protection (first 10 min)',
+
+    // EH Playbook Conditions
+    'condition.gap_fill_short': 'Gap fill short',
+    'condition.gap_fill_long': 'Gap fill long',
+    'risk.gap_continuation': 'Gap continuation risk',
   },
 };
 

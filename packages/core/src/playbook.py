@@ -10,10 +10,18 @@ KLineLens Playbook 生成模块
 - 上升趋势: Plan A (回调到支撑), Plan B (突破延续)
 - 下降趋势: Plan A (阻力拒绝), Plan B (跌破延续)
 - 震荡: Plan A (支撑反弹), Plan B (阻力回落)
+
+EH 集成:
+- gap_and_go: 优先顺势计划
+- gap_fill_bias: 添加 gap fill 计划
+- range_day_setup: 优先区间交易计划
 """
 
-from typing import List, Dict
+from typing import List, Dict, Optional, TYPE_CHECKING
 from .models import PlaybookPlan, Zone, MarketState, Signal
+
+if TYPE_CHECKING:
+    from .extended_hours import EHContext
 
 
 def _calculate_target(entry: float,
@@ -80,9 +88,10 @@ def generate_playbook(market_state: MarketState,
                       zones: Dict[str, List[Zone]],
                       signals: List[Signal],
                       atr: float,
-                      current_price: float) -> List[PlaybookPlan]:
+                      current_price: float,
+                      eh_context: Optional["EHContext"] = None) -> List[PlaybookPlan]:
     """
-    生成条件交易计划
+    生成条件交易计划（含 EH 上下文影响）
 
     参数:
         market_state: 当前趋势分类
@@ -90,6 +99,7 @@ def generate_playbook(market_state: MarketState,
         signals: 当前突破信号
         atr: 当前 ATR 值
         current_price: 当前收盘价
+        eh_context: Extended Hours 上下文（可选）
 
     返回:
         PlaybookPlan 对象列表（通常 2-4 个计划）
@@ -107,6 +117,11 @@ def generate_playbook(market_state: MarketState,
     3. 震荡:
        - Plan A: "区间支撑反弹"
        - Plan B: "区间阻力回落"
+
+    EH 上下文影响:
+    - gap_and_go: 增加顺势计划优先级
+    - gap_fill_bias: 添加 gap fill 回归 YC 计划
+    - range_day_setup: 增强区间策略
     """
     plans = []
 
@@ -249,5 +264,46 @@ def generate_playbook(market_state: MarketState,
 
     # 添加高波动性风险提示（如果 ATR 相对较大）
     # 这是一个简化的实现，实际应该比较历史 ATR
+
+    # ============ EH 上下文影响 ============
+    if eh_context is not None:
+        premarket_regime = eh_context.premarket_regime
+        gap = eh_context.levels.gap
+        yc = eh_context.levels.yc
+
+        # Gap Fill Bias: 添加回归 YC 的计划
+        if premarket_regime == "gap_fill_bias" and abs(gap) > atr * 0.5:
+            if gap > 0:
+                # 正缺口，价格可能回落到 YC
+                plans.append(PlaybookPlan(
+                    name="Plan EH",
+                    condition="condition.gap_fill_short",
+                    level=round(current_price, 2),
+                    target=round(yc, 2),
+                    invalidation=round(current_price + atr * 0.5, 2),
+                    risk="risk.gap_continuation"
+                ))
+            else:
+                # 负缺口，价格可能反弹到 YC
+                plans.append(PlaybookPlan(
+                    name="Plan EH",
+                    condition="condition.gap_fill_long",
+                    level=round(current_price, 2),
+                    target=round(yc, 2),
+                    invalidation=round(current_price - atr * 0.5, 2),
+                    risk="risk.gap_continuation"
+                ))
+
+        # Gap & Go: 强化顺势计划
+        elif premarket_regime == "gap_and_go":
+            # 将现有的 Plan B（突破延续）提升优先级
+            for plan in plans:
+                if "breakout" in plan.condition or "breakdown" in plan.condition:
+                    plan.name = "Plan A (EH)"  # 提升优先级
+
+        # Range Day Setup: 确保区间计划存在
+        elif premarket_regime == "range_day_setup":
+            # 区间日优先观望，现有计划已足够
+            pass
 
     return plans

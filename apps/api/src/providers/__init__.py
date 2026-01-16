@@ -20,7 +20,12 @@ from .base import MarketDataProvider, Bar, ProviderError, TickerNotFoundError, R
 from .yfinance_provider import YFinanceProvider
 from .alphavantage_provider import AlphaVantageProvider
 from .alpaca_provider import AlpacaProvider
-from .twelvedata_provider import TwelveDataProvider
+from .twelvedata_provider import (
+    TwelveDataProvider,
+    SessionBars,
+    segment_bars_by_session,
+    get_yesterday_sessions,
+)
 
 
 def get_provider(
@@ -72,4 +77,8 @@ __all__ = [
     "AlpacaProvider",
     "AlphaVantageProvider",
     "get_provider",
+    # Extended Hours helpers
+    "SessionBars",
+    "segment_bars_by_session",
+    "get_yesterday_sessions",
 ]
