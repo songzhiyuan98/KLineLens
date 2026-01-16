@@ -20,7 +20,7 @@ import json
 import logging
 import sys
 import os
-from typing import Optional
+from typing import Optional, Any
 from dataclasses import asdict
 from datetime import datetime
 
@@ -540,6 +540,49 @@ async def analyze(request: AnalyzeRequest):
         )
 
 
+async def get_eh_context_internal(ticker: str, tf: str = "1m") -> Optional[Any]:
+    """
+    内部函数：获取 EH 上下文
+
+    Args:
+        ticker: 股票代码
+        tf: 时间周期
+
+    Returns:
+        EHContext 对象，或 None
+    """
+    ticker = ticker.upper()
+    key = cache_key(ticker, tf, "eh-context-internal")
+
+    # 检查缓存（使用不同 key 避免冲突）
+    cached = cache.get(key)
+    if cached:
+        # 返回缓存的字典
+        return type('EHContext', (), cached)()  # 简单对象模拟
+
+    try:
+        from .providers.yfinance_provider import YFinanceProvider
+        yf_provider = YFinanceProvider()
+        eh_bars = yf_provider.get_bars_extended(ticker, tf, "2d")
+
+        if eh_bars and len(eh_bars) >= 100:
+            core_bars = [
+                CoreBar(t=bar.t, o=bar.o, h=bar.h, l=bar.l, c=bar.c, v=bar.v)
+                for bar in eh_bars
+            ]
+            eh_context = build_eh_context_from_bars(core_bars)
+
+            # 缓存
+            ctx_dict = eh_context_to_dict(eh_context)
+            cache.set(key, ctx_dict, ttl=60)
+
+            return eh_context
+    except Exception as e:
+        logger.warning(f"内部 EH 上下文获取失败: {e}")
+
+    return None
+
+
 @app.get("/v1/eh-context")
 async def get_eh_context(
     ticker: str = Query(..., description="股票代码（如 TSLA, AAPL）"),
@@ -820,13 +863,39 @@ async def narrative(request: NarrativeRequest):
         # 转换报告为字典
         report_dict = report_to_dict(report)
 
+        # 获取 EH 上下文（仅 1m/5m 周期）
+        eh_context_data = None
+        if request.tf in ("1m", "5m"):
+            try:
+                eh_ctx = await get_eh_context_internal(request.ticker, request.tf)
+                if eh_ctx:
+                    eh_context_data = {
+                        "premarket_regime": eh_ctx.premarket_regime,
+                        "bias": eh_ctx.bias,
+                        "bias_confidence": eh_ctx.bias_confidence,
+                        "levels": {
+                            "yc": eh_ctx.levels.yc,
+                            "yh": eh_ctx.levels.yh,
+                            "yl": eh_ctx.levels.yl,
+                            "pmh": eh_ctx.levels.pmh,
+                            "pml": eh_ctx.levels.pml,
+                            "ahh": eh_ctx.levels.ahh,
+                            "ahl": eh_ctx.levels.ahl,
+                            "gap": eh_ctx.levels.gap,
+                            "gap_pct": eh_ctx.levels.gap_pct,
+                        }
+                    }
+            except Exception as e:
+                logger.warning(f"获取 EH 上下文失败: {e}")
+
         # 准备 LLM 输入数据（结构化 JSON，不发送原始 OHLCV）
         analysis_json = prepare_analysis_for_llm(
             report=report_dict,
             ticker=request.ticker,
             timeframe=request.tf,
             price=current_price,
-            include_evidence=True
+            include_evidence=True,
+            eh_context=eh_context_data
         )
 
         # 生成叙事

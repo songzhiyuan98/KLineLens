@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.7.0-blue.svg" alt="Version" />
+  <img src="https://img.shields.io/badge/version-0.8.0-blue.svg" alt="Version" />
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License" />
   <img src="https://img.shields.io/badge/docker-ready-2496ED.svg?logo=docker&logoColor=white" alt="Docker" />
   <img src="https://img.shields.io/badge/python-3.11+-3776AB.svg?logo=python&logoColor=white" alt="Python" />
@@ -36,9 +36,10 @@
 | **Structure Analysis** | Know if you're in uptrend, downtrend, or range instantly |
 | **Support/Resistance Zones** | Auto-detected S/R levels with strength scoring |
 | **Breakout Detection** | 3-factor confirmation (structure + volume + momentum) |
+| **Extended Hours Context** | Premarket regime, gap analysis, key levels (YC/PMH/PML) |
 | **Behavior Inference** | Wyckoff-inspired probability distribution |
 | **Conditional Playbook** | If-then trading plans with entry, target, stop |
-| **Evidence Trail** | Every inference is traceable to specific bars |
+| **AI Interpretation** | Time-aware narrative with EH context integration |
 
 > 💡 **Use Case**: Track QQQ/SPY structure on 5-minute charts, use 1-minute for entry timing. The tool tells you when structure confirms a breakout vs when it's likely a fakeout.
 
@@ -98,8 +99,15 @@ python scripts/run_backtest.py
 - **Risk Management**: Entry, target, stop-loss, R:R ratio
 - **Invalidation Levels**: When plan becomes invalid
 
+### Extended Hours (EH) Context
+- **Premarket Analysis**: PMH/PML levels, gap detection, regime classification
+- **Session Awareness**: Different analysis modes for premarket/opening/regular/closing
+- **Key Levels**: YC (Yesterday's Close), PMH/PML (Premarket High/Low), AHH/AHL (Afterhours)
+- **Time-Aware AI**: EH context automatically included based on trading session
+
 ### AI Interpretation (Optional)
 - **LLM Integration**: OpenAI GPT-4 / Google Gemini support
+- **Time-Aware Context**: EH data included during premarket/opening sessions
 - **Auto-trigger**: On regime change, breakout state change, behavior shift
 - **Bilingual**: Chinese and English output
 
@@ -248,6 +256,7 @@ WEB_PORT=3000
 | [API.md](docs/API.md) | REST API reference |
 | [PROVIDER.md](docs/PROVIDER.md) | Data provider integration guide |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design |
+| [LLM_SPEC.md](docs/LLM_SPEC.md) | AI narrative with time-aware EH integration |
 | [EVALUATION.md](docs/EVALUATION.md) | Backtest methodology and results |
 | [CHANGELOG.md](docs/CHANGELOG.md) | Version history |
 
@@ -283,6 +292,7 @@ cd apps/api && python -m pytest tests/ -v
 
 ## Roadmap
 
+- [x] **v0.8** - Extended Hours (EH) system, time-aware AI narrative
 - [x] **v0.7** - Responsive design, smart chart ranges
 - [x] **v0.6** - Bloomberg-style terminal UI
 - [x] **v0.5** - TwelveData provider, VSA indicators

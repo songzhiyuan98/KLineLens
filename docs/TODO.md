@@ -433,3 +433,9 @@
   - [x] EH-influenced playbook generation
   - [x] i18n for EH strings
   - [x] Documentation updates (API.md, ENGINE_SPEC.md)
+- [x] LLM EH Integration (2026-01-16)
+  - [x] Time-aware EH context sending (盘前/开盘/盘中/尾盘/盘后)
+  - [x] Updated LLM prompts with EH sections
+  - [x] Removed old trend/breakout/behavior strip
+  - [x] Professional AI interpretation styling
+  - [x] Created LLM_SPEC.md documentation

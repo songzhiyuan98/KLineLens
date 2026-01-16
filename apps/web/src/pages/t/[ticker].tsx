@@ -1777,30 +1777,6 @@ export default function TickerDetail() {
                     </div>
                   )}
 
-                  {/* Chart Header (status line) */}
-                  <div style={s.chartHeader}>
-                    <div style={s.chartHeaderLeft}>
-                      <div style={s.chartStatus}>
-                        <span style={s.chartStatusLabel}>{t('label_regime')}:</span>
-                        <span style={{ ...s.chartStatusValue, color: getRegimeColor() }}>
-                          {getRegimeText()} ({Math.round(regimeConf * 100)}%)
-                        </span>
-                      </div>
-                      <div style={s.chartStatus}>
-                        <span style={s.chartStatusLabel}>{t('label_breakout')}:</span>
-                        <span style={{ ...s.chartStatusValue, color: getBreakoutStateColor() }}>
-                          {getBreakoutStateText()}
-                        </span>
-                      </div>
-                      <div style={s.chartStatus}>
-                        <span style={s.chartStatusLabel}>{t('label_behavior')}:</span>
-                        <span style={s.chartStatusValue}>
-                          {t(dominantBehavior) || '—'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
                   <div style={s.chartContainer}>
                     <CandlestickChart
                       bars={displayBars || []}
@@ -1816,43 +1792,76 @@ export default function TickerDetail() {
                     />
                   </div>
 
-                  {/* ===== AI 解读（纯文字，清晰排版） ===== */}
+                  {/* ===== AI 解读（专业终端风格） ===== */}
                   {(currentNarrative?.content || currentNarrative?.loading) && (
                     <div style={{
-                      marginTop: '1.5rem',
-                      paddingTop: '1rem',
-                      borderTop: `1px solid ${C.dividerLight}`,
+                      marginTop: '1.25rem',
+                      padding: '1rem 1.25rem',
+                      backgroundColor: 'rgba(0, 0, 0, 0.02)',
+                      borderRadius: '6px',
+                      border: `1px solid ${C.dividerLight}`,
                     }}>
+                      {/* Header */}
                       <div style={{
-                        fontSize: '0.6875rem',
-                        fontWeight: 600,
-                        color: C.textMuted,
-                        marginBottom: '0.75rem',
-                        textTransform: 'uppercase' as const,
-                        letterSpacing: '0.04em',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: '0.875rem',
                       }}>
-                        {t('ai_interpretation')}
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                        }}>
+                          <span style={{
+                            fontSize: '0.625rem',
+                            fontWeight: 600,
+                            color: C.textMuted,
+                            textTransform: 'uppercase' as const,
+                            letterSpacing: '0.05em',
+                          }}>
+                            {t('ai_interpretation')}
+                          </span>
+                          {currentNarrative?.loading && (
+                            <span style={{
+                              fontSize: '0.5625rem',
+                              color: C.accent,
+                              opacity: 0.8,
+                            }}>●</span>
+                          )}
+                        </div>
+                        <span style={{
+                          fontSize: '0.5625rem',
+                          color: C.textMuted,
+                          opacity: 0.6,
+                        }}>
+                          {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
                       </div>
 
                       {/* Loading skeleton */}
                       {currentNarrative?.loading && !currentNarrative?.content && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                          <div style={{ height: '0.875rem', width: '100%', backgroundColor: '#f3f4f6', borderRadius: '2px', animation: 'pulse 1.5s ease-in-out infinite' }} />
-                          <div style={{ height: '0.875rem', width: '95%', backgroundColor: '#f3f4f6', borderRadius: '2px', animation: 'pulse 1.5s ease-in-out infinite', animationDelay: '0.1s' }} />
-                          <div style={{ height: '0.875rem', width: '85%', backgroundColor: '#f3f4f6', borderRadius: '2px', animation: 'pulse 1.5s ease-in-out infinite', animationDelay: '0.2s' }} />
-                          <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                          <div style={{ height: '0.75rem', width: '100%', backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: '2px', animation: 'pulse 1.5s ease-in-out infinite' }} />
+                          <div style={{ height: '0.75rem', width: '92%', backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: '2px', animation: 'pulse 1.5s ease-in-out infinite', animationDelay: '0.1s' }} />
+                          <div style={{ height: '0.75rem', width: '78%', backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: '2px', animation: 'pulse 1.5s ease-in-out infinite', animationDelay: '0.2s' }} />
+                          <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
                         </div>
                       )}
 
-                      {/* Plain text */}
+                      {/* Content - single paragraph, professional styling */}
                       {currentNarrative?.content && (
-                        <div style={{
+                        <p style={{
+                          margin: 0,
                           fontSize: '0.8125rem',
-                          lineHeight: 1.8,
-                          color: C.textSecondary,
+                          lineHeight: 1.85,
+                          color: C.text,
+                          letterSpacing: '0.01em',
+                          textAlign: 'justify' as const,
+                          textJustify: 'inter-character' as const,
                         }}>
                           {currentNarrative.content}
-                        </div>
+                        </p>
                       )}
                     </div>
                   )}

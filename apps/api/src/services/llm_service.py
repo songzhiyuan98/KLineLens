@@ -16,12 +16,198 @@ LLM Narrative 服务模块 v2
 import json
 import logging
 import hashlib
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List, Literal
+from datetime import datetime, timedelta, timezone
+from typing import Optional, Dict, Any, List, Literal, Tuple
 from dataclasses import dataclass, field
 import httpx
+import pytz
 
 logger = logging.getLogger(__name__)
+
+# 美东时区
+ET = pytz.timezone('America/New_York')
+
+
+# ============ EH 时间感知逻辑 ============
+
+def get_current_et() -> datetime:
+    """获取当前美东时间"""
+    return datetime.now(ET)
+
+
+def get_session_name(time_et: datetime) -> str:
+    """
+    获取当前交易时段名称
+
+    Args:
+        time_et: 美东时间
+
+    Returns:
+        时段名称: premarket, opening, regular, closing, afterhours
+    """
+    hour = time_et.hour
+    minute = time_et.minute
+
+    if hour < 9 or (hour == 9 and minute < 30):
+        return "premarket"
+    elif hour == 9 and minute >= 30:
+        return "opening"
+    elif 10 <= hour < 15:
+        return "regular"
+    elif 15 <= hour < 16:
+        return "closing"
+    else:
+        return "afterhours"
+
+
+def is_price_near_level(price: float, level: float, threshold_pct: float = 0.5) -> bool:
+    """检查价格是否在某个水平附近"""
+    if not level or not price:
+        return False
+    return abs(price - level) / price * 100 <= threshold_pct
+
+
+def should_include_eh_context(
+    price: float,
+    eh_context: Optional[Dict[str, Any]],
+    time_et: Optional[datetime] = None
+) -> Dict[str, Any]:
+    """
+    根据当前时间和价格位置决定是否发送 EH 数据
+
+    Args:
+        price: 当前价格
+        eh_context: EH 上下文数据
+        time_et: 美东时间（默认使用当前时间）
+
+    Returns:
+        {
+            "include": bool,
+            "level": "full" | "partial" | "minimal" | "none",
+            "emphasis": str,
+            "near_level": str | None
+        }
+    """
+    if not eh_context:
+        return {"include": False, "level": "none", "emphasis": "none", "near_level": None}
+
+    if time_et is None:
+        time_et = get_current_et()
+
+    hour = time_et.hour
+    minute = time_et.minute
+    levels = eh_context.get("levels", {})
+
+    # 盘前 (04:00-09:30) - 完整 EH
+    if hour < 9 or (hour == 9 and minute < 30):
+        return {
+            "include": True,
+            "level": "full",
+            "emphasis": "premarket_regime_and_gap",
+            "near_level": None
+        }
+
+    # 开盘 (09:30-10:00) - 完整 EH，强调 gap
+    if hour == 9 and minute >= 30:
+        return {
+            "include": True,
+            "level": "full",
+            "emphasis": "gap_fill_vs_continuation",
+            "near_level": None
+        }
+
+    # 盘中 (10:00-15:00) - 条件发送
+    if 10 <= hour < 15:
+        # 检查价格是否在 EH 关键位附近
+        checks = [
+            ("yc", levels.get("yc")),
+            ("pmh", levels.get("pmh")),
+            ("pml", levels.get("pml")),
+        ]
+        for name, level in checks:
+            if level and is_price_near_level(price, level, 0.5):
+                return {
+                    "include": True,
+                    "level": "partial",
+                    "emphasis": f"price_at_{name}",
+                    "near_level": name
+                }
+        # 价格远离所有 EH 关键位
+        return {"include": False, "level": "minimal", "emphasis": "none", "near_level": None}
+
+    # 尾盘 (15:00-16:00) - 最小化
+    if 15 <= hour < 16:
+        return {"include": False, "level": "minimal", "emphasis": "closing_structure", "near_level": None}
+
+    # 盘后/休市 - 不发送
+    return {"include": False, "level": "none", "emphasis": "none", "near_level": None}
+
+
+def format_eh_for_llm(
+    eh_context: Dict[str, Any],
+    eh_decision: Dict[str, Any],
+    price: float
+) -> Optional[Dict[str, Any]]:
+    """
+    根据 EH decision 格式化发送给 LLM 的 EH 数据
+
+    Args:
+        eh_context: 完整 EH 上下文
+        eh_decision: should_include_eh_context 的返回值
+        price: 当前价格
+
+    Returns:
+        格式化的 EH 数据，或 None
+    """
+    if not eh_decision.get("include"):
+        return None
+
+    levels = eh_context.get("levels", {})
+    level_filter = eh_decision.get("level", "none")
+
+    # 根据 level 过滤要发送的价位
+    if level_filter == "full":
+        filtered_levels = {
+            "yc": levels.get("yc"),
+            "pmh": levels.get("pmh"),
+            "pml": levels.get("pml"),
+            "ahh": levels.get("ahh"),
+            "ahl": levels.get("ahl"),
+        }
+    elif level_filter == "partial":
+        filtered_levels = {
+            "yc": levels.get("yc"),
+            "pmh": levels.get("pmh"),
+            "pml": levels.get("pml"),
+        }
+    else:
+        filtered_levels = {"yc": levels.get("yc")}
+
+    # 计算各 level 与当前价格的距离
+    level_distances = {}
+    for name, lvl in filtered_levels.items():
+        if lvl and price:
+            dist_pct = round((lvl - price) / price * 100, 2)
+            level_distances[name] = {"price": lvl, "dist_pct": dist_pct}
+
+    gap = levels.get("gap", 0)
+    gap_pct = levels.get("gap_pct", 0)
+
+    return {
+        "session": get_session_name(get_current_et()),
+        "regime": eh_context.get("premarket_regime"),
+        "bias": eh_context.get("bias"),
+        "bias_confidence": eh_context.get("bias_confidence", 0),
+        "gap": {
+            "size": gap,
+            "size_pct": gap_pct,
+            "direction": "up" if gap > 0 else "down" if gap < 0 else "flat",
+        },
+        "levels": level_distances,
+        "emphasis": eh_decision.get("emphasis"),
+        "near_level": eh_decision.get("near_level"),
+    }
+
 
 # ============ System Prompt (通用约束) ============
 
@@ -198,17 +384,39 @@ PROMPT_QUICK_UPDATE = """根据提供的市场数据，用一段话解读当前�
 
 数据：
 {analysis_json}
-
+{eh_section}
 要求：
-- 一段连贯的分析文字，80-120字
+- 一段连贯的分析文字，80-150字
 - 解读数据含义，说明当前结构状态
 - 如果行为与趋势冲突要解释原因
 - 带具体数字（价位、RVOL等）
 - 不要标题、bullet、分段，就一段话
 - 不要写操作建议，只做数据解读
-
-示例：
+{eh_instruction}
+示例（无EH）：
 当前价格在620附近震荡，两次尝试突破621.5阻力均未成功，RVOL仅0.78低于确认阈值1.8，说明买盘动能不足。虽然行为模式显示有资金在吸筹，但整体趋势仍偏空，属于反弹结构而非趋势反转。下方618支撑已测试2次有承接，短期关注能否放量突破或支撑失守。
+
+示例（含EH - 盘前/开盘）：
+开盘跳空高开1.3%后回落测试YC(245.50)，盘前形态为gap_fill_bias，当前价格在PMH(246.80)下方整理。RVOL 0.85偏低，缺乏明确方向。若回补缺口至YC有支撑反弹机会，否则关注245下方是否破位。整体偏向观望。
+"""
+
+# EH 相关 prompt 片段
+EH_SECTION_FULL = """
+EH 上下文（盘前/盘后数据）：
+{eh_json}
+"""
+
+EH_INSTRUCTION_PREMARKET = """
+额外要求（盘前/开盘时段）：
+- 必须提及盘前形态（premarket_regime）和 Gap 方向/幅度
+- 解释当前价格相对 PMH/PML/YC 的位置
+- 如果是 gap_fill_bias，说明缺口回补的可能性
+- 如果是 gap_and_go，说明顺势延续的条件
+"""
+
+EH_INSTRUCTION_PARTIAL = """
+额外要求：
+- 价格当前在 {near_level} 附近，请解释该关键位的意义
 """
 
 # ============ Data Classes ============
@@ -555,17 +763,46 @@ class LLMService:
             prompt_template = PROMPT_5M_ANALYSIS
             model = self.model_full
 
+        # 构建 EH prompt sections
+        eh_section = ""
+        eh_instruction = ""
+        eh_decision = analysis_json.get("_eh_decision", {})
+        eh_data = analysis_json.get("eh")
+
+        if eh_data and report_type == "quick":
+            # 根据 emphasis 选择不同的 EH instruction
+            emphasis = eh_decision.get("emphasis", "")
+            eh_section = EH_SECTION_FULL.format(
+                eh_json=json.dumps(eh_data, indent=2, ensure_ascii=False)
+            )
+            if emphasis in ["premarket_regime_and_gap", "gap_fill_vs_continuation"]:
+                eh_instruction = EH_INSTRUCTION_PREMARKET
+            elif eh_decision.get("near_level"):
+                eh_instruction = EH_INSTRUCTION_PARTIAL.format(
+                    near_level=eh_decision.get("near_level", "YC")
+                )
+
+        # 从 analysis_json 中移除内部字段（不发送给 LLM）
+        analysis_for_llm = {k: v for k, v in analysis_json.items() if not k.startswith("_")}
+
         # 构建 prompt
         if report_type == "aggregated" and pending_events:
             user_prompt = prompt_template.format(
                 lang_name=lang_name,
                 events_json=json.dumps(pending_events, indent=2, ensure_ascii=False),
-                analysis_json=json.dumps(analysis_json, indent=2, ensure_ascii=False)
+                analysis_json=json.dumps(analysis_for_llm, indent=2, ensure_ascii=False)
+            )
+        elif report_type == "quick":
+            user_prompt = prompt_template.format(
+                lang_name=lang_name,
+                analysis_json=json.dumps(analysis_for_llm, indent=2, ensure_ascii=False),
+                eh_section=eh_section,
+                eh_instruction=eh_instruction
             )
         else:
             user_prompt = prompt_template.format(
                 lang_name=lang_name,
-                analysis_json=json.dumps(analysis_json, indent=2, ensure_ascii=False)
+                analysis_json=json.dumps(analysis_for_llm, indent=2, ensure_ascii=False)
             )
 
         try:
@@ -728,12 +965,21 @@ def prepare_analysis_for_llm(
     ticker: str,
     timeframe: str,
     price: float,
-    include_evidence: bool = True
+    include_evidence: bool = True,
+    eh_context: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
     准备发送给 LLM 的结构化 JSON
 
     只包含必要的分析结果，不发送原始 OHLCV 数据。
+
+    Args:
+        report: 分析报告
+        ticker: 股票代码
+        timeframe: 时间周期
+        price: 当前价格
+        include_evidence: 是否包含证据
+        eh_context: EH 上下文（新增）
     """
     # 提取 regime
     regime = report.get("market_state", {})
@@ -830,7 +1076,15 @@ def prepare_analysis_for_llm(
             "invalidation": p.get("invalidation", 0)
         }
 
-    return {
+    # 处理 EH 上下文（时间感知）
+    eh_data = None
+    eh_decision = None
+    if eh_context and timeframe in ["1m", "5m"]:
+        eh_decision = should_include_eh_context(price, eh_context)
+        if eh_decision.get("include"):
+            eh_data = format_eh_for_llm(eh_context, eh_decision, price)
+
+    result = {
         "ticker": ticker,
         "timeframe": timeframe,
         "price": price,
@@ -851,6 +1105,14 @@ def prepare_analysis_for_llm(
         }
     }
 
+    # 添加 EH 数据（如果有）
+    if eh_data:
+        result["eh"] = eh_data
+    if eh_decision:
+        result["_eh_decision"] = eh_decision  # 内部使用，用于选择 prompt
+
+    return result
+
 
 # ============ Convenience Function ============
 
@@ -862,6 +1124,7 @@ async def generate_narrative(
     price: float,
     report_type: Literal["full", "quick", "confirmation", "context"] = "full",
     lang: Literal["zh", "en"] = "zh",
+    eh_context: Optional[Dict[str, Any]] = None,
 ) -> NarrativeResult:
     """
     便捷函数：从分析报告生成叙事
@@ -874,11 +1137,15 @@ async def generate_narrative(
         price: 当前价格
         report_type: 报告类型
         lang: 输出语言
+        eh_context: EH 上下文数据（新增）
 
     Returns:
         NarrativeResult 对象
     """
-    analysis_json = prepare_analysis_for_llm(report, ticker, timeframe, price)
+    analysis_json = prepare_analysis_for_llm(
+        report, ticker, timeframe, price,
+        eh_context=eh_context
+    )
     return await llm_service.generate_analysis(
         analysis_json,
         timeframe=timeframe,

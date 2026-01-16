@@ -46,8 +46,10 @@
 ### 5.2 Header
 - Ticker 名称（大字）
 - 当前价格 + 涨跌幅（灰色，不用红绿）
-- 市场状态标签（灰边框）
 - 量比标签（灰边框）
+- 最后更新时间
+
+> **注意**: 旧版的"趋势/突破/行为"摘要条已移除，相关信息整合到右侧面板的各个卡片中。
 
 ### 5.3 工具条
 - Timeframe 切换：1分钟 / 5分钟 / 日线（圆角按钮）
@@ -60,8 +62,20 @@
 - Volume MA 均线（橙色，30 周期）
 - Support/Resistance Zone 线（虚线）
 - 高亮标记（Evidence 点击触发）
+- **EH Levels（仅 1m/5m 周期）**：
+  - YC: 橙色实线 (Yesterday's Close - 磁吸位)
+  - PMH/PML: 紫色虚线 (Premarket High/Low)
+  - AHH/AHL: 靛蓝点线 (Afterhours High/Low)
 
 ### 5.5 Analysis Panel（卡片顺序固定，无边框）
+
+**0) 盘前上下文 (Premarket Context)** — 仅 1m/5m 周期显示
+- 位置：Summary 上方，作为首个 section
+- 显示内容（单行布局）：
+  - 左侧：形态（大字）- trend_continuation / gap_and_go / gap_fill_bias / range_day_setup
+  - 右侧：偏向 + 置信度 + Gap
+- 不显示 YC/YH/YL 等价位（这些在 Key Zones 中显示）
+- 条件：仅当 `ehContext` 存在且 `timeframe` 为 1m/5m 时显示
 
 **1) 市场状态 (Market State)**
 - 状态名称 + 置信度百分比
