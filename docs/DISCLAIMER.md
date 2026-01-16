@@ -1,9 +1,34 @@
-# Disclaimer / 风险声明
+# Disclaimer / Risk Statement
 
-KLineLens 提供的分析基于历史 OHLCV（开高低收量）与规则化结构识别，输出为概率解释与条件剧本。
-本产品不构成任何投资建议、财务建议或收益保证。
+KLineLens provides analysis based on historical OHLCV (Open-High-Low-Close-Volume) data and rule-based structure recognition. Output consists of probability-based interpretations and conditional playbooks.
 
-- 行为推断（吸筹/洗盘/派发等）仅为模式识别推断，不代表任何真实机构席位行为。
-- 1分钟级别数据噪声较高，应结合更高周期验证。
-- 对低流动性标的、极端事件行情，信号误判概率上升。
-用户需自行承担交易风险。
+**This product does not constitute any investment advice, financial advice, or profit guarantee.**
+
+- Behavior inference (accumulation/shakeout/distribution, etc.) is only pattern recognition inference and does not represent any actual institutional trading behavior.
+- 1-minute level data has high noise; should be verified with higher timeframes.
+- For low-liquidity instruments and extreme market events, signal misjudgment probability increases.
+
+**Users must bear their own trading risks.**
+
+---
+
+## Data Source Disclaimer
+
+- Market data is provided by third-party data providers (Yahoo Finance, TwelveData, Alpaca, Alpha Vantage)
+- Data accuracy, completeness, and timeliness are not guaranteed
+- Rate limits and API availability are subject to provider policies
+- Users are responsible for complying with data provider terms of service
+
+## System Limitations
+
+- Analysis is based on historical patterns and may not predict future price movements
+- Extended hours data may have lower volume and reliability
+- Signal evaluation accuracy depends on market conditions and data quality
+- The system may experience delays or errors during high volatility periods
+
+## Not Financial Advice
+
+- This tool is for educational and informational purposes only
+- Past performance does not guarantee future results
+- Always do your own research before making trading decisions
+- Consider consulting a licensed financial advisor for investment guidance

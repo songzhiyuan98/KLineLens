@@ -1,294 +1,308 @@
 # KLineLens Deployment Guide
 
-> 本地部署指南：使用 Docker Compose 一键启动 KLineLens。
+> Local deployment guide: One-click startup using Docker Compose
 
 ---
 
-## 1. 环境要求
+## 1. Requirements
 
-### 1.1 必需软件
-| 软件 | 版本要求 | 说明 |
-|------|---------|------|
-| Docker Desktop | 4.0+ | macOS/Windows 用户 |
-| Docker Engine | 20.0+ | Linux 用户 |
-| Docker Compose | V2 | 通常随 Docker Desktop 安装 |
+### 1.1 Required Software
+| Software | Version | Notes |
+|----------|---------|-------|
+| Docker Desktop | 4.0+ | For macOS/Windows users |
+| Docker Engine | 20.0+ | For Linux users |
+| Docker Compose | V2 | Usually installed with Docker Desktop |
 
-### 1.2 系统资源
-| 资源 | 最低要求 | 推荐配置 |
-|------|---------|---------|
-| CPU | 2 核 | 4 核 |
-| 内存 | 2 GB | 4 GB |
-| 磁盘 | 2 GB | 5 GB |
+### 1.2 System Resources
+| Resource | Minimum | Recommended |
+|----------|---------|-------------|
+| CPU | 2 cores | 4 cores |
+| Memory | 2 GB | 4 GB |
+| Disk | 2 GB | 5 GB |
 
 ---
 
-## 2. Quick Start（快速启动）
+## 2. Quick Start
 
 ```bash
-# 1. 克隆仓库
-git clone https://github.com/user/klinelens.git
-cd klinelens
+# 1. Clone repository
+git clone https://github.com/songzhiyuan98/KLineLens.git
+cd KLineLens
 
-# 2. 复制环境配置
+# 2. Copy environment config
 cp .env.example .env
 
-# 3. 启动服务（首次会构建镜像，需要几分钟）
+# 3. Start services (first run builds images, takes a few minutes)
 docker compose up --build
 
-# 4. 访问应用
+# 4. Access application
 # Web UI: http://localhost:3000
 # API: http://localhost:8000
-# API 文档: http://localhost:8000/docs
+# API Docs: http://localhost:8000/docs
 ```
 
 ---
 
-## 3. 环境配置
+## 3. Environment Configuration
 
-### 3.1 配置文件 (.env)
+### 3.1 Configuration File (.env)
 
-复制 `.env.example` 为 `.env` 并根据需要修改：
+Copy `.env.example` to `.env` and modify as needed:
 
 ```bash
-# ============ Provider 配置 ============
-# 数据源选择：yahoo (默认，免费) | polygon | twelvedata
+# ============ Provider Configuration ============
+# Data source: yahoo (default, free) | twelvedata | alpaca | alphavantage
 PROVIDER=yahoo
 
-# ============ 缓存配置 ============
-# K 线数据缓存时间（秒）
+# ============ Cache Configuration ============
+# K-line data cache duration (seconds)
 CACHE_TTL=60
 
-# ============ 端口配置 ============
-# API 端口（默认 8000）
+# ============ Port Configuration ============
+# API port (default 8000)
 API_PORT=8000
-# Web 端口（默认 3000）
+# Web port (default 3000)
 WEB_PORT=3000
 
-# ============ 刷新频率 ============
-# 前端自动刷新间隔（秒）
+# ============ Refresh Frequency ============
+# Frontend auto-refresh interval (seconds)
 REFRESH_SECONDS=60
 
-# ============ 日志级别 ============
+# ============ Log Level ============
 # DEBUG | INFO | WARNING | ERROR
 LOG_LEVEL=INFO
 
-# ============ 可选：付费 Provider API Keys ============
-# 如果使用 Polygon.io
-# POLYGON_API_KEY=your_key_here
-
-# 如果使用 TwelveData
+# ============ Optional: Provider API Keys ============
+# If using TwelveData
 # TWELVEDATA_API_KEY=your_key_here
+
+# If using Alpaca
+# ALPACA_API_KEY=your_key_here
+# ALPACA_API_SECRET=your_secret_here
+
+# If using Alpha Vantage
+# ALPHAVANTAGE_API_KEY=your_key_here
 ```
 
-### 3.2 默认值说明
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| PROVIDER | yahoo | 免费数据源，无需 API key |
-| CACHE_TTL | 60 | 减少对数据源的请求频率 |
-| API_PORT | 8000 | FastAPI 后端端口 |
-| WEB_PORT | 3000 | Next.js 前端端口 |
-| REFRESH_SECONDS | 60 | 前端自动刷新间隔 |
+### 3.2 Default Values
+| Variable | Default | Description |
+|----------|---------|-------------|
+| PROVIDER | yahoo | Free data source, no API key needed |
+| CACHE_TTL | 60 | Reduces request frequency to data source |
+| API_PORT | 8000 | FastAPI backend port |
+| WEB_PORT | 3000 | Next.js frontend port |
+| REFRESH_SECONDS | 60 | Frontend auto-refresh interval |
 
 ---
 
-## 4. Docker 命令
+## 4. Docker Commands
 
-### 4.1 常用命令
+### 4.1 Common Commands
 ```bash
-# 启动（后台运行）
+# Start (background)
 docker compose up -d
 
-# 启动（前台运行，显示日志）
+# Start (foreground, shows logs)
 docker compose up
 
-# 重新构建并启动
+# Rebuild and start
 docker compose up --build
 
-# 停止服务
+# Stop services
 docker compose down
 
-# 查看日志
+# View logs
 docker compose logs -f
 
-# 仅查看 API 日志
+# View API logs only
 docker compose logs -f api
 
-# 仅查看 Web 日志
+# View Web logs only
 docker compose logs -f web
 ```
 
-### 4.2 清理命令
+### 4.2 Cleanup Commands
 ```bash
-# 停止并删除容器
+# Stop and remove containers
 docker compose down
 
-# 停止并删除容器、网络、卷
+# Stop and remove containers, networks, volumes
 docker compose down -v
 
-# 删除所有未使用的镜像
+# Remove all unused images
 docker image prune -a
 ```
 
 ---
 
-## 5. 切换 Provider
+## 5. Switching Providers
 
-### 5.1 Yahoo Finance（默认）
-- **优点**：免费，无需 API key
-- **缺点**：有每日请求限制（约 2000 次），数据延迟 15-20 分钟
-- **配置**：
+### 5.1 Yahoo Finance (Default)
+- **Pros**: Free, no API key needed
+- **Cons**: Daily request limit (~2000), 15-20 minute data delay
+- **Configuration**:
 ```bash
 PROVIDER=yahoo
 ```
 
-### 5.2 Polygon.io（V1 支持）
-- **优点**：实时数据，更高限额
-- **缺点**：需要付费 API key
-- **配置**：
-```bash
-PROVIDER=polygon
-POLYGON_API_KEY=your_api_key
-```
-
-### 5.3 TwelveData（V1 支持）
-- **优点**：全球市场覆盖
-- **缺点**：需要付费 API key
-- **配置**：
+### 5.2 TwelveData (Recommended)
+- **Pros**: Near real-time data, reliable volume, global coverage
+- **Cons**: 800 free requests/day
+- **Configuration**:
 ```bash
 PROVIDER=twelvedata
 TWELVEDATA_API_KEY=your_api_key
 ```
 
+### 5.3 Alpaca
+- **Pros**: Free, unlimited requests, professional API
+- **Cons**: US stocks only
+- **Configuration**:
+```bash
+PROVIDER=alpaca
+ALPACA_API_KEY=your_key
+ALPACA_API_SECRET=your_secret
+```
+
+### 5.4 Alpha Vantage
+- **Pros**: High-quality volume data
+- **Cons**: 25 free requests/day
+- **Configuration**:
+```bash
+PROVIDER=alphavantage
+ALPHAVANTAGE_API_KEY=your_api_key
+```
+
 ---
 
-## 6. 常见问题排查
+## 6. Troubleshooting
 
-### 6.1 端口占用
-**问题**：`Error: port 8000 is already in use`
+### 6.1 Port Already in Use
+**Problem**: `Error: port 8000 is already in use`
 
-**解决**：
+**Solutions**:
 ```bash
-# 方法 1：修改端口
-# 编辑 .env 文件
+# Method 1: Change port
+# Edit .env file
 API_PORT=8001
 WEB_PORT=3001
 
-# 方法 2：停止占用端口的进程
+# Method 2: Kill process using the port
 lsof -i :8000
 kill -9 <PID>
 ```
 
-### 6.2 Docker 权限问题
-**问题**：`permission denied while trying to connect to Docker`
+### 6.2 Docker Permission Issues
+**Problem**: `permission denied while trying to connect to Docker`
 
-**解决**（Linux）：
+**Solution** (Linux):
 ```bash
 sudo usermod -aG docker $USER
-# 重新登录终端
+# Re-login to terminal
 ```
 
-### 6.3 拉不到数据
-**问题**：API 返回 404 NO_DATA
+### 6.3 No Data Returned
+**Problem**: API returns 404 NO_DATA
 
-**可能原因**：
-1. Yahoo Finance 限流 → 等待几分钟后重试
-2. 无效的 ticker → 检查股票代码是否正确
-3. 非交易时间 → 1m 数据仅在交易时段有效
+**Possible Causes**:
+1. Yahoo Finance rate limited → Wait a few minutes and retry
+2. Invalid ticker → Check ticker spelling
+3. Outside trading hours → 1m data only valid during trading sessions
 
-**排查**：
+**Debugging**:
 ```bash
-# 检查 API 健康状态
+# Check API health
 curl http://localhost:8000/
 
-# 测试获取数据
+# Test data fetch
 curl "http://localhost:8000/v1/bars?ticker=AAPL&tf=1d"
 ```
 
-### 6.4 构建失败
-**问题**：Docker 镜像构建失败
+### 6.4 Build Failure
+**Problem**: Docker image build fails
 
-**解决**：
+**Solutions**:
 ```bash
-# 清理缓存重新构建
+# Clean cache and rebuild
 docker compose build --no-cache
 
-# 检查 Docker 资源限制
+# Check Docker resource limits
 docker system df
 docker system prune
 ```
 
-### 6.5 Web 无法连接 API
-**问题**：前端显示 "Failed to fetch"
+### 6.5 Web Cannot Connect to API
+**Problem**: Frontend shows "Failed to fetch"
 
-**排查**：
+**Debugging**:
 ```bash
-# 检查 API 是否运行
+# Check if API is running
 curl http://localhost:8000/
 
-# 检查网络
+# Check network
 docker network ls
 docker network inspect klinelens-network
 ```
 
 ---
 
-## 7. 开发模式
+## 7. Development Mode
 
-### 7.1 本地开发（不使用 Docker）
+### 7.1 Local Development (Without Docker)
 ```bash
-# Terminal 1: 启动 API
+# Terminal 1: Start API
 cd apps/api
 pip install -r requirements.txt
 uvicorn src.main:app --reload --port 8000
 
-# Terminal 2: 启动 Web
+# Terminal 2: Start Web
 cd apps/web
 npm install
 npm run dev
 ```
 
-### 7.2 混合模式
+### 7.2 Hybrid Mode
 ```bash
-# 仅启动 API（Docker）
+# Start only API (Docker)
 docker compose up api
 
-# 本地启动 Web（开发模式）
+# Start Web locally (dev mode)
 cd apps/web
 npm run dev
 ```
 
 ---
 
-## 8. 健康检查
+## 8. Health Checks
 
-### 8.1 API 健康检查
+### 8.1 API Health Check
 ```bash
 curl http://localhost:8000/
-# 期望响应: {"status": "ok", "service": "klinelens-api", "provider": "yfinance"}
+# Expected: {"status": "ok", "service": "klinelens-api", "provider": "yfinance"}
 ```
 
-### 8.2 服务状态
+### 8.2 Service Status
 ```bash
 docker compose ps
-# 所有服务应显示 "running" 或 "healthy"
+# All services should show "running" or "healthy"
 ```
 
 ---
 
-## 9. 更新
+## 9. Updates
 
-### 9.1 更新到最新版本
+### 9.1 Update to Latest Version
 ```bash
-# 拉取最新代码
+# Pull latest code
 git pull origin main
 
-# 重新构建并启动
+# Rebuild and start
 docker compose up --build -d
 ```
 
-### 9.2 回滚
+### 9.2 Rollback
 ```bash
-# 回滚到指定版本
+# Rollback to specific version
 git checkout <commit-hash>
 docker compose up --build -d
 ```

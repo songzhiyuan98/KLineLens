@@ -1,46 +1,46 @@
-# SIM_TRADER_SPEC.md（方案 A：0DTE Trade Plan 模块）
+# SIM_TRADER_SPEC.md (Plan A: 0DTE Trade Plan Module)
 
-> 0DTE 交易剧本模块设计文档 - 不依赖期权报价，只输出标的价格层级的交易计划
-
----
-
-## 1. 模块目标（Scope）
-
-本模块用于把分析系统输出的结构化信号转换为：
-
-* **交易预案（WATCH/ARMED）**
-* **明确进场指令（ENTER CALL / ENTER PUT）**
-* **出场目标（Target）与失效条件（Invalidation）**
-* **持仓管理建议（HOLD / TRIM / EXIT）**
-* **复盘记录（信号是否正确、是否按规则执行）**
-
-> ⚠️ 本模块不需要期权实时报价，不计算真实 premium。
-> 它输出的是"标的（QQQ）价格层级"上的交易剧本与执行建议。
+> 0DTE Trading Playbook Module Design Document - Does not depend on options quotes, only outputs trading plans at the underlying price level
 
 ---
 
-## 2. 与分析系统完全分离（Hard Separation）
+## 1. Module Goals (Scope)
 
-### 分析系统负责：
+This module converts structured signals from the analysis system into:
 
-* 计算信号、行为结构、趋势
-* 计算 levels/zones（R1/R2/S1/S2/YC/HOD/LOD 等）
-* 产出统一结构化快照 `AnalysisSnapshot`
+* **Trade Setup (WATCH/ARMED)**
+* **Clear Entry Signals (ENTER CALL / ENTER PUT)**
+* **Exit Targets and Invalidation Conditions**
+* **Position Management Advice (HOLD / TRIM / EXIT)**
+* **Post-trade Review Records (signal correctness, rule execution)**
 
-### Trade Plan 模块负责：
-
-* 不做任何技术指标计算
-* 不重算趋势
-* 只消费 `AnalysisSnapshot`
-* 输出交易计划 `TradePlanRow` + 持仓建议 `ManageAdvice`
+> ⚠️ This module does not require real-time options quotes and does not calculate actual premium.
+> It outputs trading playbooks and execution advice at the "underlying (QQQ) price level".
 
 ---
 
-## 3. 输入/输出契约（Types）
+## 2. Complete Separation from Analysis System (Hard Separation)
 
-### 3.1 输入：AnalysisSnapshot
+### Analysis System Responsibilities:
 
-最小字段：
+* Calculate signals, behavior structure, trends
+* Calculate levels/zones (R1/R2/S1/S2/YC/HOD/LOD, etc.)
+* Output unified structured snapshot `AnalysisSnapshot`
+
+### Trade Plan Module Responsibilities:
+
+* Does NOT perform any technical indicator calculations
+* Does NOT recalculate trends
+* Only consumes `AnalysisSnapshot`
+* Outputs trade plan `TradePlanRow` + position advice `ManageAdvice`
+
+---
+
+## 3. Input/Output Contracts (Types)
+
+### 3.1 Input: AnalysisSnapshot
+
+Minimum fields:
 
 ```ts
 type AnalysisSnapshot = {
@@ -76,7 +76,7 @@ type AnalysisSnapshot = {
 
 ---
 
-### 3.2 输出：TradePlanRow（用于 UI 表格）
+### 3.2 Output: TradePlanRow (For UI Table)
 
 ```ts
 type TradeStatus = "WAIT" | "WATCH" | "ARMED" | "ENTER" | "HOLD" | "TRIM" | "EXIT";
@@ -102,89 +102,89 @@ type TradePlanRow = {
 
 ---
 
-## 4. 核心思想：Trade Plan（交易剧本）而非 Premium
+## 4. Core Philosophy: Trade Plan (Playbook) Not Premium
 
-### 4.1 为什么不需要 premium？
+### 4.1 Why Premium Is Not Needed
 
-0DTE 期权 premium 强依赖：
+0DTE option premium heavily depends on:
 
-* theta 衰减
-* IV 变化
-* spread/流动性
+* Theta decay
+* IV changes
+* Spread/liquidity
 
-模拟系统如果没有专业期权数据源，硬算 premium 反而会误导。
+If a simulation system lacks professional options data sources, hard-calculating premium would be misleading.
 
-✅ 所以方案 A 只输出：
+✅ Therefore Plan A only outputs:
 
-* **标的触发位（entry）**
-* **标的目标位（target）**
-* **标的失效位（invalidation）**
-* **风险与确认条件**
+* **Underlying trigger level (entry)**
+* **Underlying target level (target)**
+* **Underlying invalidation level (stop)**
+* **Risk and confirmation conditions**
 
-执行时你去 Robinhood 对照当前 0DTE 合约 premium 即可。
+When executing, you check the current 0DTE contract premium on Robinhood.
 
 ---
 
-## 5. 状态机（State Machine）
+## 5. State Machine
 
-每个 ticker 每天最多 1 笔"高胜率交易"（可设置）。
+Each ticker has at most 1 "high probability trade" per day (configurable).
 
-状态流转：
+State transitions:
 
 ```
 WAIT → WATCH → ARMED → ENTER → HOLD → TRIM/EXIT
                  ↓
-               (条件不满足回退)
+               (conditions not met, fallback)
                  ↓
                WAIT
 ```
 
-状态定义：
+State definitions:
 
-| 状态 | 含义 | 触发条件 |
-|------|------|----------|
-| `WAIT` | 无交易机会 | 默认状态，无 setup |
-| `WATCH` | 出现 setup，但未接近触发 | 价格距离关键位 > 0.3% |
-| `ARMED` | 接近触发，发预警 | 价格距离关键位 <= 0.3% |
-| `ENTER` | 触发条件满足，建议下单 | 所有确认条件通过 |
-| `HOLD` | 已进入持仓管理 | ENTER 后下一根 bar |
-| `TRIM` | 建议减仓 | 软止损条件触发 |
-| `EXIT` | 建议清仓 | 硬止损条件触发 |
+| State | Meaning | Trigger Condition |
+|-------|---------|-------------------|
+| `WAIT` | No trade opportunity | Default state, no setup |
+| `WATCH` | Setup appeared, but not near trigger | Price > 0.3% from key level |
+| `ARMED` | Near trigger, send alert | Price <= 0.3% from key level |
+| `ENTER` | Trigger conditions met, recommend order | All confirmation conditions passed |
+| `HOLD` | In position management | Next bar after ENTER |
+| `TRIM` | Recommend partial exit | Soft stop conditions triggered |
+| `EXIT` | Recommend full exit | Hard stop conditions triggered |
 
-> 注：ENTER 后下一根 bar 自动进入 HOLD（避免一直显示 ENTER）。
-
----
-
-## 6. 0DTE 策略规则（QQQ专用）
-
-### 6.1 时间窗口
-
-| 时段 | 美东时间 | 太平洋时间 | 说明 |
-|------|----------|------------|------|
-| 开盘保护 | 09:30-09:40 | 06:30-06:40 | openingProtection=true，更严格确认 |
-| 黄金时段 | 09:40-11:00 | 06:40-08:00 | 最佳交易窗口 |
-| 午盘 | 11:00-14:00 | 08:00-11:00 | 流动性下降，谨慎 |
-| 尾盘 | 14:00-16:00 | 11:00-13:00 | theta 加速，高风险 |
-
-推荐交易时间：**06:00–11:00 PT**（可配置）
+> Note: Next bar after ENTER automatically enters HOLD (to avoid constantly showing ENTER).
 
 ---
 
-### 6.2 Entry Setup（交易机会类型）
+## 6. 0DTE Strategy Rules (QQQ Specific)
 
-支持 4 种核心 setup：
+### 6.1 Time Windows
 
-#### Setup A：R1 Breakout（CALL）
+| Session | Eastern Time | Pacific Time | Notes |
+|---------|--------------|--------------|-------|
+| Opening Protection | 09:30-09:40 | 06:30-06:40 | openingProtection=true, stricter confirmation |
+| Golden Hour | 09:40-11:00 | 06:40-08:00 | Best trading window |
+| Midday | 11:00-14:00 | 08:00-11:00 | Lower liquidity, cautious |
+| Close | 14:00-16:00 | 11:00-13:00 | Theta accelerates, high risk |
 
-**场景**：价格接近 R1，上破可能拉升
+Recommended trading time: **06:00–11:00 PT** (configurable)
 
-**触发条件**：
-- `1m close > R1` 连续 **2根确认**
+---
+
+### 6.2 Entry Setups (Trade Opportunity Types)
+
+Supports 4 core setups:
+
+#### Setup A: R1 Breakout (CALL)
+
+**Scenario**: Price approaching R1, breakout may rally
+
+**Trigger Conditions**:
+- `1m close > R1` for **2 consecutive confirmations**
 - `breakoutQuality == pass`
 - `trend_1m == up`
-- `rvolState != low`（开盘保护时强制）
+- `rvolState != low` (mandatory during opening protection)
 
-**输出**：
+**Output**:
 ```
 status: ENTER
 direction: CALL
@@ -195,17 +195,17 @@ invalidation: close < R1 (2 bars)
 
 ---
 
-#### Setup B：S1 Breakdown（PUT）
+#### Setup B: S1 Breakdown (PUT)
 
-**场景**：价格接近 S1，下破可能下跌
+**Scenario**: Price approaching S1, breakdown may drop
 
-**触发条件**（对称逻辑）：
-- `1m close < S1` 连续 2 根
+**Trigger Conditions** (symmetric logic):
+- `1m close < S1` for 2 consecutive bars
 - `breakoutQuality == pass`
 - `trend_1m == down`
 - `rvolState != low`
 
-**输出**：
+**Output**:
 ```
 status: ENTER
 direction: PUT
@@ -216,16 +216,16 @@ invalidation: close > S1 (2 bars)
 
 ---
 
-#### Setup C：YC Reclaim（CALL）
+#### Setup C: YC Reclaim (CALL)
 
-**场景**：价格回踩 YC 不破，再次站上
+**Scenario**: Price tests YC without breaking, reclaims
 
-**触发条件**：
-- 价格曾跌破 YC 后重新站上
-- `1m close > YC` 连续 2 根
+**Trigger Conditions**:
+- Price previously broke below YC then reclaimed
+- `1m close > YC` for 2 consecutive bars
 - `trend_1m != down`
 
-**输出**：
+**Output**:
 ```
 status: ENTER
 direction: CALL
@@ -234,20 +234,20 @@ targetUnderlying: R1 or PMH
 invalidation: close < YC (2 bars)
 ```
 
-适合震荡日高胜率"回补/反弹"。
+Suitable for high-probability "gap fill/bounce" on range days.
 
 ---
 
-#### Setup D：R1 Reject（PUT）
+#### Setup D: R1 Reject (PUT)
 
-**场景**：触碰 R1 被拒绝，结构转空
+**Scenario**: Touched R1 but rejected, structure turns bearish
 
-**触发条件**：
-- 价格触及 R1 但未能突破（wicks）
-- `1m close < R1` 连续 2 根（rejection 确认）
-- `trend_1m == down` 或 `behavior == distribution`
+**Trigger Conditions**:
+- Price touched R1 but failed to break (wicks)
+- `1m close < R1` for 2 consecutive bars (rejection confirmation)
+- `trend_1m == down` or `behavior == distribution`
 
-**输出**：
+**Output**:
 ```
 status: ENTER
 direction: PUT
@@ -258,125 +258,125 @@ invalidation: close > R1 (2 bars)
 
 ---
 
-### 6.3 Buffer（避免假突破）
+### 6.3 Buffer (Avoiding Fakeouts)
 
 ```
 buffer = 0.05% * price
 ```
 
-| 标的价格 | Buffer |
-|----------|--------|
+| Underlying Price | Buffer |
+|------------------|--------|
 | QQQ 500 | ~0.25 |
 | QQQ 600 | ~0.30 |
 | QQQ 624 | ~0.31 |
 
-可配置参数：`BUFFER_PCT = 0.0005`
+Configurable parameter: `BUFFER_PCT = 0.0005`
 
 ---
 
-## 7. HOLD/TRIM/EXIT（持仓管理建议）
+## 7. HOLD/TRIM/EXIT (Position Management Advice)
 
-### 7.1 EXIT（硬条件）
+### 7.1 EXIT (Hard Conditions)
 
-任一命中立即 `EXIT`：
+Any hit triggers immediate `EXIT`:
 
-| 条件 | 说明 |
-|------|------|
-| trend 反转 + 关键位失守 | CALL 单跌回 R1 下方并 2 根确认 |
-| behavior 转 distribution/wash | 与 CALL 方向冲突 |
-| 触发 invalidation | 预设止损位被触发 |
-
----
-
-### 7.2 TRIM（软条件，0DTE 专属）
-
-任一命中建议 `TRIM`：
-
-| 条件 | 说明 |
-|------|------|
-| 时间止损 | 进场后 8–12 分钟未向 target 推进 |
-| 多次冲击失败 | 目标位被测试 >= 3 次未突破 |
-| 动能衰减 | rvol 变 low + chop 增强 |
+| Condition | Description |
+|-----------|-------------|
+| Trend reversal + key level lost | CALL position falls back below R1 with 2-bar confirmation |
+| Behavior turns distribution/wash | Conflicts with CALL direction |
+| Invalidation triggered | Preset stop level hit |
 
 ---
 
-### 7.3 HOLD（继续持有）
+### 7.2 TRIM (Soft Conditions, 0DTE Specific)
 
-所有条件满足时继续 `HOLD`：
+Any hit suggests `TRIM`:
 
-- 结构未破（关键位未失守）
-- 仍朝 target 推进
-- breakoutQuality 仍有效
+| Condition | Description |
+|-----------|-------------|
+| Time stop | 8-12 minutes after entry with no progress toward target |
+| Multiple failed attempts | Target tested >= 3 times without breaking |
+| Momentum decay | RVOL turns low + chop increases |
 
 ---
 
-## 8. Watchlist Hint（提前预警去 RH 盯合约）
+### 7.3 HOLD (Continue Holding)
 
-当 status = ARMED 或 ENTER 时输出：
+Continue `HOLD` when all conditions satisfied:
+
+- Structure not broken (key levels intact)
+- Still pushing toward target
+- breakoutQuality still valid
+
+---
+
+## 8. Watchlist Hint (Pre-alert to Watch Contract on RH)
+
+When status = ARMED or ENTER, output:
 
 | Direction | Hint |
 |-----------|------|
 | CALL | `Watch 0DTE ATM +1 strike CALL` |
 | PUT | `Watch 0DTE ATM +1 strike PUT` |
 
-附加提示：
+Additional note:
 > "Prefer liquidity: highest OI/volume strike"
 
-> 以后如果接期权数据源，再升级成具体合约 symbol 与 premium。
+> Future: If options data source connected, upgrade to specific contract symbol and premium.
 
 ---
 
-## 9. UI 显示：表格是最优解
+## 9. UI Display: Table is Optimal
 
-### 9.1 推荐表格列
+### 9.1 Recommended Table Columns
 
-**Sim Trade Plan（表格）**
+**Sim Trade Plan (Table)**
 
-| 列名 | 字段 | 说明 |
-|------|------|------|
-| Time | ts | 时间戳 |
+| Column | Field | Description |
+|--------|-------|-------------|
+| Time | ts | Timestamp |
 | Status | status | WAIT/WATCH/ARMED/ENTER/HOLD/TRIM/EXIT |
 | Dir | direction | CALL/PUT/NONE |
-| Entry | entryUnderlying | 入场条件 |
-| Target | targetUnderlying | 目标位 |
-| Invalidation | invalidation | 失效条件 |
+| Entry | entryUnderlying | Entry condition |
+| Target | targetUnderlying | Target level |
+| Invalidation | invalidation | Stop condition |
 | Risk | risk | LOW/MED/HIGH |
-| Watch | watchlistHint | 合约提示 |
+| Watch | watchlistHint | Contract hint |
 
-点击某行展开 `reasons[]`（证据链）。
+Click row to expand `reasons[]` (evidence chain).
 
-### 9.2 颜色编码
+### 9.2 Color Coding
 
-| Status | 背景色 |
-|--------|--------|
-| WAIT | 灰色 |
-| WATCH | 淡黄 |
-| ARMED | 橙色 |
-| ENTER | 绿色（CALL）/ 红色（PUT）|
-| HOLD | 蓝色 |
-| TRIM | 紫色 |
-| EXIT | 深灰 |
+| Status | Background Color |
+|--------|------------------|
+| WAIT | Gray |
+| WATCH | Light Yellow |
+| ARMED | Orange |
+| ENTER | Green (CALL) / Red (PUT) |
+| HOLD | Blue |
+| TRIM | Purple |
+| EXIT | Dark Gray |
 
-### 9.3 放置位置
+### 9.3 Placement
 
-- ✅ 放在 **K 线下方**（作为新 Tab）
-- 右侧栏继续保持 Summary/Trigger/Action 固定可见
-
----
-
-## 10. 更新频率（性能与体验）
-
-| 操作 | 频率 | 说明 |
-|------|------|------|
-| 内部状态更新 | 每 1m bar close | 足够快，不浪费资源 |
-| UI 刷新 | 每 1m 或节流 3 秒 | 避免闪烁 |
-| EH 数据 | 只用缓存 | 绝不盘中高频请求 |
+- ✅ Place **below K-line chart** (as new Tab)
+- Right panel keeps Summary/Trigger/Action fixed visible
 
 ---
 
-## 11. 复盘记录（Post-Mortem）
+## 10. Update Frequency (Performance & UX)
 
-每次 trade 完成后生成：
+| Operation | Frequency | Notes |
+|-----------|-----------|-------|
+| Internal state update | Every 1m bar close | Fast enough, doesn't waste resources |
+| UI refresh | Every 1m or throttled 3s | Avoid flickering |
+| EH data | Cache only | Never request EH during session |
+
+---
+
+## 11. Post-Trade Review (Post-Mortem)
+
+After each trade completion, generate:
 
 ```ts
 type TradeReview = {
@@ -391,7 +391,7 @@ type TradeReview = {
   exitPrice: number;
 
   outcome: "WIN" | "LOSS" | "BREAKEVEN";
-  pnlPct?: number;  // 标的涨跌幅（非期权收益）
+  pnlPct?: number;  // Underlying price change (not option return)
 
   notes: string[];
 
@@ -401,67 +401,67 @@ type TradeReview = {
 };
 ```
 
-### 11.1 复盘统计
+### 11.1 Review Statistics
 
-| 指标 | 计算方式 |
-|------|----------|
-| 胜率 | WIN / (WIN + LOSS) |
-| 信号准确率 | signalCorrect / total |
-| 执行准确率 | executionCorrect / total |
-| 常见失败原因 | 按 failureReason 分组统计 |
+| Metric | Calculation |
+|--------|-------------|
+| Win Rate | WIN / (WIN + LOSS) |
+| Signal Accuracy | signalCorrect / total |
+| Execution Accuracy | executionCorrect / total |
+| Common Failure Reasons | Group by failureReason |
 
-> 方案 A 不算真实美元收益，但可以通过 outcome + 失败原因，优化策略阈值。
-
----
-
-## 12. 参数配置表（Defaults）
-
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `BUFFER_PCT` | 0.0005 | 避免假突破的缓冲 |
-| `CONFIRM_BARS` | 2 | 确认所需 K 线数 |
-| `INVALIDATE_BARS` | 2 | 失效确认所需 K 线数 |
-| `ARMED_DISTANCE_PCT` | 0.003 | 距离关键位 0.3% 内触发 ARMED |
-| `TIME_STOP_MINUTES` | 10 | 时间止损（无进展） |
-| `MAX_TARGET_ATTEMPTS` | 3 | 目标位最大测试次数 |
-| `MAX_TRADES_PER_DAY` | 1 | 每日最大交易次数 |
-| `OPENING_PROTECTION_MINUTES` | 10 | 开盘保护时长 |
+> Plan A doesn't calculate real dollar returns, but outcome + failure reasons can optimize strategy thresholds.
 
 ---
 
-## 13. 文件结构建议
+## 12. Parameter Configuration (Defaults)
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `BUFFER_PCT` | 0.0005 | Fakeout avoidance buffer |
+| `CONFIRM_BARS` | 2 | Bars needed for confirmation |
+| `INVALIDATE_BARS` | 2 | Bars needed for invalidation |
+| `ARMED_DISTANCE_PCT` | 0.003 | Trigger ARMED within 0.3% of key level |
+| `TIME_STOP_MINUTES` | 10 | Time stop (no progress) |
+| `MAX_TARGET_ATTEMPTS` | 3 | Max target test attempts |
+| `MAX_TRADES_PER_DAY` | 1 | Max daily trades |
+| `OPENING_PROTECTION_MINUTES` | 10 | Opening protection duration |
+
+---
+
+## 13. File Structure Recommendation
 
 ```
 packages/core/src/
 ├── sim_trader/
 │   ├── __init__.py
 │   ├── types.py          # AnalysisSnapshot, TradePlanRow, TradeReview
-│   ├── state_machine.py  # TradeStateMachine 类
-│   ├── setups.py         # 4 种 setup 检测逻辑
-│   ├── manager.py        # HOLD/TRIM/EXIT 持仓管理
-│   └── config.py         # 参数配置
+│   ├── state_machine.py  # TradeStateMachine class
+│   ├── setups.py         # 4 setup detection logic
+│   ├── manager.py        # HOLD/TRIM/EXIT position management
+│   └── config.py         # Parameter configuration
 │
 apps/api/src/
 ├── services/
-│   └── sim_trader_service.py  # API 层封装
+│   └── sim_trader_service.py  # API layer wrapper
 │
 apps/web/src/
 ├── components/
-│   └── SimTradeTable.tsx      # 表格 UI 组件
+│   └── SimTradeTable.tsx      # Table UI component
 ```
 
 ---
 
-## 14. API 端点设计
+## 14. API Endpoint Design
 
 ### GET /v1/sim-trade-plan
 
-**请求**：
+**Request**:
 ```
 GET /v1/sim-trade-plan?ticker=QQQ&tf=1m
 ```
 
-**响应**：
+**Response**:
 ```json
 {
   "ticker": "QQQ",
@@ -499,9 +499,9 @@ GET /v1/sim-trade-plan?ticker=QQQ&tf=1m
 
 ---
 
-## 15. 示例输出
+## 15. Example Outputs
 
-### 15.1 ARMED 状态
+### 15.1 ARMED State
 
 | Time | Status | Dir | Entry | Target | Invalidation | Risk | Watch |
 |------|--------|-----|-------|--------|--------------|------|-------|
@@ -515,7 +515,7 @@ GET /v1/sim-trade-plan?ticker=QQQ&tf=1m
 
 ---
 
-### 15.2 ENTER 状态
+### 15.2 ENTER State
 
 | Time | Status | Dir | Entry | Target | Invalidation | Risk | Watch |
 |------|--------|-----|-------|--------|--------------|------|-------|
@@ -528,7 +528,7 @@ GET /v1/sim-trade-plan?ticker=QQQ&tf=1m
 
 ---
 
-### 15.3 WAIT 状态（无机会）
+### 15.3 WAIT State (No Opportunity)
 
 | Time | Status | Dir | Entry | Target | Invalidation | Risk | Watch |
 |------|--------|-----|-------|--------|--------------|------|-------|
@@ -541,10 +541,10 @@ GET /v1/sim-trade-plan?ticker=QQQ&tf=1m
 
 ---
 
-## 附录：与现有系统的映射
+## Appendix: Mapping with Existing System
 
-| 现有字段 | 映射到 AnalysisSnapshot |
-|----------|------------------------|
+| Existing Field | Maps To AnalysisSnapshot |
+|----------------|--------------------------|
 | `report.trend.regime` | signals.trend_1m/5m |
 | `report.behavior.dominant` | signals.behavior |
 | `report.breakout.state` | signals.breakoutQuality |

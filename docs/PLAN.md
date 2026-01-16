@@ -1,35 +1,41 @@
-# KLineLens MVP - Plan
+# KLineLens MVP - Development Plan
 
 ## Milestone 0: Repo & Infra
-- monorepo 初始化
-- web/api/core 基础运行
-- 环境变量与配置
+- Monorepo initialization
+- web/api/core basic setup
+- Environment variables and configuration
 
 ## Milestone 1: Market Data
-- Provider 接入（先一个）
+- Provider integration (start with one)
 - GET /v1/bars
-- 基础缓存、错误处理
+- Basic caching, error handling
 
 ## Milestone 2: Core Structure
-- swing points
-- zones（support/resistance）
-- regime（trend/range）
-- breakout state machine
+- Swing points
+- Zones (support/resistance)
+- Regime (trend/range)
+- Breakout state machine
 
 ## Milestone 3: Behavior + Timeline + Playbook
-- behavior scores -> probabilities
-- evidence pack
-- stateful timeline（内存版）
-- playbook 模板
+- Behavior scores -> probabilities
+- Evidence pack
+- Stateful timeline (in-memory)
+- Playbook templates
 
 ## Milestone 4: Web Terminal + Settings Language
-- Dashboard 大搜索框 -> /t/{ticker}
-- Detail 图表 + overlays + 面板卡片
-- /settings 语言切换（localStorage）
-- 每60秒刷新 analyze
+- Dashboard large search box -> /t/{ticker}
+- Detail chart + overlays + panel cards
+- /settings language toggle (localStorage)
+- 60-second auto-refresh analyze
 
-## MVP验收标准
-- / 输入 ticker 可进入详情页
-- 1m K线展示 + zones + signals
-- 行为概率 + 证据 + timeline + playbook 全部可见
-- Settings 切换语言全站生效
+## Milestone 5: Extended Hours + 0DTE Strategy
+- Extended hours context (premarket/afterhours)
+- 0DTE trade plan module
+- Strategy type selection (Playbook / 0DTE)
+
+## MVP Acceptance Criteria
+- / input ticker navigates to detail page
+- 1m K-line displays + zones + signals
+- Behavior probabilities + evidence + timeline + playbook all visible
+- Settings language toggle applies site-wide
+- Docker compose up one-click startup succeeds

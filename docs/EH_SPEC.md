@@ -45,29 +45,29 @@ An **Extended Hours Context Provider** that:
 
 ### 1.2 Data Sources for Extended Hours
 
-#### Option A: Yahoo Finance (推荐 MVP 方案 - 免费)
+#### Option A: Yahoo Finance (Recommended MVP Solution - Free)
 
-Yahoo Finance 通过 `prepost=True` 参数免费提供盘前盘后数据：
+Yahoo Finance provides free premarket/afterhours data via `prepost=True` parameter:
 
 ```python
-# yfinance 获取 Extended Hours
+# Get Extended Hours data with yfinance
 provider = YFinanceProvider()
 bars = provider.get_bars_extended("TSLA", "1m", "2d")
 ```
 
-**特点:**
-| 功能 | 支持情况 | 说明 |
-|------|---------|------|
-| 盘前 (04:00-09:30 ET) | ✅ | 可提取 PMH/PML |
-| 盘后 (16:00-20:00 ET) | ✅ | 可提取 AHH/AHL |
-| 成本 | **免费** | 无需 API Key |
-| 延迟 | 15-20 分钟 | 非实时，但足够结构分析 |
-| 数据稳定性 | ⚠️ 偶尔缺失 | 用于关键位提取足够 |
+**Features:**
+| Feature | Support | Notes |
+|---------|---------|-------|
+| Premarket (04:00-09:30 ET) | ✅ | PMH/PML extraction |
+| Afterhours (16:00-20:00 ET) | ✅ | AHH/AHL extraction |
+| Cost | **Free** | No API Key required |
+| Delay | 15-20 minutes | Not real-time, but sufficient for structure analysis |
+| Data stability | ⚠️ Occasionally missing | Sufficient for key level extraction |
 
-**MVP 推荐用法:**
-- TwelveData 做正盘主数据源（可靠成交量）
-- Yahoo Finance 补充盘前盘后数据（免费）
-- 达到 `partial` 或延迟版 `complete` 模式
+**MVP Recommended Usage:**
+- TwelveData as primary regular session source (reliable volume)
+- Yahoo Finance supplements premarket/afterhours data (free)
+- Achieves `partial` or delayed `complete` mode
 
 #### Option B: TwelveData Extended Hours
 
@@ -93,18 +93,18 @@ GET /time_series?symbol=TSLA&interval=1min&prepost=true
 - Only U.S. markets supported (no Canadian/international tickers)
 - Response includes `is_extended_hours` boolean field
 
-#### 数据源对比
+#### Data Source Comparison
 
-| 方案 | 成本 | 延迟 | 可达模式 | 推荐场景 |
-|------|------|------|----------|----------|
-| Yahoo Finance | 免费 | 15-20分钟 | partial/complete (延迟) | **MVP 推荐** |
-| TwelveData Free | 免费 | T-1 | partial | 仅历史 EH |
-| TwelveData Pro | $79/月 | 实时 | complete | 专业用户 |
+| Option | Cost | Delay | Achievable Mode | Recommended For |
+|--------|------|-------|-----------------|-----------------|
+| Yahoo Finance | Free | 15-20 min | partial/complete (delayed) | **MVP Recommended** |
+| TwelveData Free | Free | T-1 | partial | Historical EH only |
+| TwelveData Pro | $79/mo | Real-time | complete | Professional users |
 
 **MVP Strategy:**
-- 使用 Yahoo Finance `prepost=True` 获取盘前盘后数据（免费）
-- 解决开盘断层问题，提取 PMH/PML/AHH/AHL
-- 15-20 分钟延迟对于结构分析可接受
+- Use Yahoo Finance `prepost=True` for premarket/afterhours data (free)
+- Solve opening gap problem, extract PMH/PML/AHH/AHL
+- 15-20 minute delay acceptable for structure analysis
 
 ### 1.3 Data Quality Tiers (Core Mechanism)
 

@@ -1,206 +1,207 @@
-# KLineLens MVP - UX Spec（极简专业页面规格）
+# KLineLens MVP - UX Specification
 
-## 1. 设计原则
-- **极简**：无边框卡片、灰色系配色、减少视觉干扰
-- **专业**：数据密度高、信息层级清晰
-- **少层级**：三页（Dashboard / Detail / Settings）
-- **进入即用**：无登录
-- **双语支持**：中文/English，Settings 切换
+## 1. Design Principles
+- **Minimal**: Borderless cards, gray color scheme, reduced visual noise
+- **Professional**: High data density, clear information hierarchy
+- **Few Layers**: Three pages (Dashboard / Detail / Settings)
+- **Instant Use**: No login required
+- **Bilingual Support**: Chinese/English, switchable in Settings
 
 ---
 
-## 2. 路由
+## 2. Routes
 - `/` Dashboard
 - `/t/{ticker}` Detail
 - `/settings` Settings
 
 ---
 
-## 3. 顶部导航（全站一致）
-- 左：Logo（点击回 `/`）
-- 右：Settings 图标（跳转 `/settings`）
+## 3. Top Navigation (Site-wide Consistent)
+- Left: Logo (click to go to `/`)
+- Right: Settings icon (navigate to `/settings`)
 
 ---
 
-## 4. Dashboard（/）
+## 4. Dashboard (/)
+
 ### 4.1 Layout
-- 页面居中：大搜索框 + "Analyze" 按钮
-- 纯黑白设计（Logo 黑色，副标题灰色）
-- 输入框下方：最近访问的股票（localStorage，最多 6 个）
-- Enter 或按钮触发搜索
+- Page centered: Large search box + "Analyze" button
+- Pure black and white design (Logo black, subtitle gray)
+- Below input: Recently visited stocks (localStorage, max 6)
+- Enter key or button triggers search
 
-### 4.2 交互
-- 输入：ticker（大小写不敏感）
-- 模糊搜索：输入时显示建议列表
-- 校验：空/非法格式提示
-- 成功：跳转 `/t/{ticker}` 并记录到最近访问
+### 4.2 Interactions
+- Input: ticker (case-insensitive)
+- Fuzzy search: Show suggestion list while typing
+- Validation: Empty/invalid format shows prompt
+- Success: Navigate to `/t/{ticker}` and record to recent visits
 
 ---
 
-## 5. Detail（/t/{ticker}）
+## 5. Detail (/t/{ticker})
 
-### 5.1 Layout（左图右面板）
-- Left 70%：Chart + Volume
-- Right 30%：Analysis Panel（无边框卡片堆叠）
+### 5.1 Layout (Left Chart, Right Panel)
+- Left 70%: Chart + Volume
+- Right 30%: Analysis Panel (borderless stacked cards)
 
 ### 5.2 Header
-- Ticker 名称（大字）
-- 当前价格 + 涨跌幅（灰色，不用红绿）
-- 量比标签（灰边框）
-- 最后更新时间
+- Ticker name (large font)
+- Current price + change percentage (gray, no red/green)
+- Volume ratio badge (gray border)
+- Last update time
 
-> **注意**: 旧版的"趋势/突破/行为"摘要条已移除，相关信息整合到右侧面板的各个卡片中。
+> **Note**: The old "Trend/Breakout/Behavior" summary bar has been removed, related info is now integrated into the right panel cards.
 
-### 5.3 工具条
-- Timeframe 切换：1分钟 / 5分钟 / 日线（圆角按钮）
-- 刷新按钮
-- 最后更新时间
+### 5.3 Toolbar
+- Timeframe toggle: 1 Minute / 5 Minute / Daily (rounded buttons)
+- Refresh button
+- Last update time
 
-### 5.4 Chart 区
-- K 线图（OHLC）
-- Volume 柱状图（占底部 20%）
-- Volume MA 均线（橙色，30 周期）
-- Support/Resistance Zone 线（虚线）
-- 高亮标记（Evidence 点击触发）
-- **EH Levels（仅 1m/5m 周期）**：
-  - YC: 橙色实线 (Yesterday's Close - 磁吸位)
-  - PMH/PML: 紫色虚线 (Premarket High/Low)
-  - AHH/AHL: 靛蓝点线 (Afterhours High/Low)
+### 5.4 Chart Area
+- K-line chart (OHLC)
+- Volume bar chart (occupies bottom 20%)
+- Volume MA line (orange, 30 periods)
+- Support/Resistance Zone lines (dashed)
+- Highlight markers (triggered by Evidence click)
+- **EH Levels (1m/5m timeframes only)**:
+  - YC: Orange solid line (Yesterday's Close - magnet level)
+  - PMH/PML: Purple dashed line (Premarket High/Low)
+  - AHH/AHL: Indigo dotted line (Afterhours High/Low)
 
-### 5.5 Analysis Panel（卡片顺序固定，无边框）
+### 5.5 Analysis Panel (Fixed Card Order, Borderless)
 
-**0) 盘前上下文 (Premarket Context)** — 仅 1m/5m 周期显示
-- 位置：Summary 上方，作为首个 section
-- 显示内容（单行布局）：
-  - 左侧：形态（大字）- trend_continuation / gap_and_go / gap_fill_bias / range_day_setup
-  - 右侧：偏向 + 置信度 + Gap
-- 不显示 YC/YH/YL 等价位（这些在 Key Zones 中显示）
-- 条件：仅当 `ehContext` 存在且 `timeframe` 为 1m/5m 时显示
+**0) Premarket Context** — Only shown for 1m/5m timeframes
+- Position: Above Summary, as first section
+- Display content (single-line layout):
+  - Left: Regime (large font) - trend_continuation / gap_and_go / gap_fill_bias / range_day_setup
+  - Right: Bias + Confidence + Gap
+- Does not display YC/YH/YL prices (these are shown in Key Zones)
+- Condition: Only show when `ehContext` exists and `timeframe` is 1m/5m
 
-**1) 市场状态 (Market State)**
-- 状态名称 + 置信度百分比
-- 置信度进度条（灰色）
+**1) Market State**
+- State name + Confidence percentage
+- Confidence progress bar (gray)
 
-**2) 突破状态 (Breakout Status)**
-- 状态：观望中 / 尝试突破 / 突破确认 / 假突破
-- 量比：X.XXx (≥/< 1.8)
-- 确认K线：2/2 / 1/2 / -
+**2) Breakout Status**
+- State: Watching / Breakout Attempt / Breakout Confirmed / Fakeout
+- Volume Ratio: X.XXx (≥/< 1.8)
+- Confirmation Candles: 2/2 / 1/2 / -
 
-**3) 信号 (Signals)**
-- 最多 5 条
-- 格式：信号名称 · $价格 · 时间
-- 无滚动条
+**3) Signals**
+- Max 5 items
+- Format: Signal name · $Price · Time
+- No scrollbar
 
-**4) 支撑证据 (Evidence)**
-- 最多 5 条
-- 显示时间戳（发生时间）
-- 可点击定位到图表对应 K 线
-- ● 图标表示可定位
-- 点击高亮显示
-- 每日缓存：进入自动加载当天数据
+**4) Supporting Evidence**
+- Max 5 items
+- Shows timestamp (occurrence time)
+- Clickable to locate corresponding K-line on chart
+- ● icon indicates locatable
+- Click to highlight
+- Daily cache: Auto-loads today's data on entry
 
-**5) 行为推断 (Behavior Inference)**
-- 5 类行为概率条
-- 最高概率加粗显示
+**5) Behavior Inference**
+- 5 behavior probability bars
+- Highest probability shown in bold
 
-**6) 交易剧本 (Playbook)** — 表格化显示
-- Plan A + Plan B 并排，一行表格格式
-- 列：方向 | 入场 | 目标 | 止损 | R:R | 条件 | 风险
-- 方向颜色：LONG 绿色 / SHORT 红色
-- 可切换到"信号评估"Tab
+**6) Trading Playbook** — Table display
+- Plan A + Plan B side by side, table row format
+- Columns: Direction | Entry | Target | Stop | R:R | Condition | Risk
+- Direction colors: LONG green / SHORT red
+- Can toggle to "Signal Evaluation" Tab
 
-**7) 信号评估 (Signal Evaluation)** — 与 Playbook 切换
-- 表格显示历史预测记录
-- 列：时间 | 信号类型 | 方向 | 价格 | 状态 | 结果 | 原因
-- 状态标签：待评估(灰) / 正确(绿) / 错误(红)
-- 顶部显示准确率统计：总数 / 正确 / 错误 / 准确率
-- 支持手动标记评估结果
+**7) Signal Evaluation** — Toggle with Playbook
+- Table showing historical prediction records
+- Columns: Time | Signal Type | Direction | Price | Status | Result | Reason
+- Status labels: Pending (gray) / Correct (green) / Wrong (red)
+- Top shows accuracy stats: Total / Correct / Wrong / Accuracy Rate
+- Supports manual evaluation result marking
 
-**8) 时间线 (Timeline)**
-- 最多 6 条，显示在右侧面板
-- 格式：● 事件名称 + 时间
-- 灰色圆点（不用彩色）
-- 每日缓存：进入自动加载当天数据
+**8) Timeline**
+- Max 6 items, displayed in right panel
+- Format: ● Event name + Time
+- Gray dots (no colors)
+- Daily cache: Auto-loads today's data on entry
 
-### 5.6 错误态
-- 无数据："暂无数据"
-- 限流："请稍后刷新"
-- ticker 无效：提示 + 返回按钮
+### 5.6 Error States
+- No data: "No data available"
+- Rate limited: "Please refresh later"
+- Invalid ticker: Prompt + Back button
 
 ---
 
-## 6. Settings（/settings）
+## 6. Settings (/settings)
 
 ### 6.1 Layout
-- 居中窄版布局（max-width: 560px）
-- 分组：语言 / 关于 / 免责声明
-- 响应式字体（clamp）
+- Centered narrow layout (max-width: 560px)
+- Grouped: Language / About / Disclaimer
+- Responsive fonts (clamp)
 
-### 6.2 语言设置
-- 按钮式切换：中文 / English
-- 选中状态：黑底白字
-- 切换后立即生效
-- localStorage 持久化
+### 6.2 Language Settings
+- Button-style toggle: Chinese / English
+- Selected state: Black background, white text
+- Takes effect immediately on switch
+- localStorage persistence
 
-### 6.3 关于
-- 应用名称 + 描述 + 版本号
-- 灰色背景卡片
+### 6.3 About
+- App name + Description + Version number
+- Gray background card
 
-### 6.4 免责声明
-- 简洁文本，边框卡片
-- 中文："本工具仅用于技术分析学习，不构成任何投资建议。市场有风险，投资需谨慎。"
-- 英文："For educational purposes only. Not financial advice. Trade at your own risk."
+### 6.4 Disclaimer
+- Concise text, bordered card
+- Chinese: "This tool is for technical analysis learning only, does not constitute any investment advice. Markets carry risk, invest with caution."
+- English: "For educational purposes only. Not financial advice. Trade at your own risk."
 
-### 6.5 默认值
-- 初次访问默认：中文
-
----
-
-## 7. 视觉规范
-
-### 7.1 配色
-- 背景：#f8f9fa（浅灰）
-- 文字：#1a1a1a（黑）/ #666（次要）/ #999（辅助）
-- 边框：#eaeaea
-- 强调：#26a69a（仅用于 K 线涨色和关键操作按钮）
-
-### 7.2 卡片样式
-- 无背景色（透明）
-- 无边框
-- 内容分隔用细线或间距
-
-### 7.3 字体
-- 系统默认：-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto
-- 标题：1rem - 2rem
-- 正文：0.875rem
-- 辅助：0.75rem
+### 6.5 Defaults
+- First visit defaults to: Browser language or English
 
 ---
 
-## 8. 响应式设计
+## 7. Visual Specifications
 
-### 8.1 流体排版（Fluid Typography）
-- 使用 CSS `clamp()` 实现字体大小随视口缩放
-- 字体层级：
-  - tiny: `clamp(0.5625rem, 0.5rem + 0.15vw, 0.6875rem)` - 状态栏、标签
-  - small: `clamp(0.625rem, 0.55rem + 0.2vw, 0.8125rem)` - 次要文本
-  - body: `clamp(0.6875rem, 0.6rem + 0.2vw, 0.875rem)` - 主要文本
-  - medium: `clamp(0.75rem, 0.65rem + 0.25vw, 0.9375rem)` - 区块内容
-  - large: `clamp(0.875rem, 0.75rem + 0.3vw, 1.125rem)` - 强调文本
-  - heading: `clamp(1.375rem, 1.1rem + 0.6vw, 1.875rem)` - 标题
+### 7.1 Colors
+- Background: #f8f9fa (light gray)
+- Text: #1a1a1a (black) / #666 (secondary) / #999 (tertiary)
+- Border: #eaeaea
+- Accent: #26a69a (only used for K-line up color and key action buttons)
 
-### 8.2 动态图表高度
-- 基于视口高度：~45% of vh
-- 最小：280px
-- 最大：550px
-- 公式：`Math.min(550, Math.max(280, vh * 0.45))`
+### 7.2 Card Style
+- No background color (transparent)
+- No border
+- Content separated by thin lines or spacing
 
-### 8.3 智能可视范围
-- 1m 周期：120 bars（约 2 小时）- 执行级别
-- 5m 周期：78 bars（约 1 交易日）- 结构级别
-- 1d 周期：20 bars（约 1 个月）- 趋势级别
+### 7.3 Fonts
+- System default: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto
+- Headings: 1rem - 2rem
+- Body: 0.875rem
+- Secondary: 0.75rem
 
-### 8.4 断点
-- 桌面端优先（>= 1024px）
-- 全屏模式：字体自动放大填充屏幕
-- 移动端（未来）：图表全宽，面板下移
+---
+
+## 8. Responsive Design
+
+### 8.1 Fluid Typography
+- Use CSS `clamp()` for viewport-scaling font sizes
+- Font hierarchy:
+  - tiny: `clamp(0.5625rem, 0.5rem + 0.15vw, 0.6875rem)` - status bar, labels
+  - small: `clamp(0.625rem, 0.55rem + 0.2vw, 0.8125rem)` - secondary text
+  - body: `clamp(0.6875rem, 0.6rem + 0.2vw, 0.875rem)` - main text
+  - medium: `clamp(0.75rem, 0.65rem + 0.25vw, 0.9375rem)` - block content
+  - large: `clamp(0.875rem, 0.75rem + 0.3vw, 1.125rem)` - emphasized text
+  - heading: `clamp(1.375rem, 1.1rem + 0.6vw, 1.875rem)` - titles
+
+### 8.2 Dynamic Chart Height
+- Based on viewport height: ~45% of vh
+- Minimum: 280px
+- Maximum: 550px
+- Formula: `Math.min(550, Math.max(280, vh * 0.45))`
+
+### 8.3 Smart Visible Range
+- 1m timeframe: 120 bars (~2 hours) - execution level
+- 5m timeframe: 78 bars (~1 trading day) - structure level
+- 1d timeframe: 20 bars (~1 month) - trend level
+
+### 8.4 Breakpoints
+- Desktop-first (>= 1024px)
+- Fullscreen mode: Fonts auto-scale to fill screen
+- Mobile (future): Chart full-width, panel moves below

@@ -1,63 +1,63 @@
-# KLineLens — LLM Narrative Spec
+# KLineLens — LLM Narrative Specification
 
-> AI 解读模块规范：事件驱动 + EH 上下文感知
-
----
-
-## 1. 设计原则
-
-| 原则 | 说明 |
-|------|------|
-| **不预测价格** | LLM 只解释结构，不做价格预测 |
-| **证据驱动** | 每个结论必须有 [#bar_index] 证据支持 |
-| **时间感知** | 根据当前时间决定发送哪些 EH 数据 |
-| **简洁终端风格** | 输出像交易终端，不像作文 |
-| **Volume 质量感知** | 无量数据时明确降低置信度 |
+> AI Interpretation Module Specification: Event-driven + EH Context-aware
 
 ---
 
-## 2. 报告类型
+## 1. Design Principles
 
-| 类型 | 触发条件 | 模型 | 用途 |
-|------|----------|------|------|
-| `quick` | 用户点击"生成短评" | gpt-4o-mini | 80-120字快速解读 |
-| `full` | 5m Hard Event 触发 | gpt-4o | 完整结构分析 |
-| `confirmation` | 1m 确认/否定 | gpt-4o-mini | 执行级别确认 |
-| `context` | 1D 背景 | gpt-4o | 大结构框架 |
-| `aggregated` | 冷却期后聚合 | gpt-4o-mini | 多事件汇总 |
+| Principle | Description |
+|-----------|-------------|
+| **No Price Predictions** | LLM only explains structure, does not predict prices |
+| **Evidence-driven** | Every conclusion must have [#bar_index] evidence support |
+| **Time-aware** | Decide which EH data to send based on current time |
+| **Concise Terminal Style** | Output like a trading terminal, not an essay |
+| **Volume Quality Awareness** | Explicitly lower confidence when volume data is missing |
 
 ---
 
-## 3. EH 上下文集成
+## 2. Report Types
 
-### 3.1 时间窗口定义（美东时间 ET）
+| Type | Trigger Condition | Model | Purpose |
+|------|-------------------|-------|---------|
+| `quick` | User clicks "Generate Quick Update" | gpt-4o-mini | 80-120 word quick interpretation |
+| `full` | 5m Hard Event triggered | gpt-4o | Complete structure analysis |
+| `confirmation` | 1m confirmation/denial | gpt-4o-mini | Execution level confirmation |
+| `context` | 1D background | gpt-4o | Big picture framework |
+| `aggregated` | After cooldown period | gpt-4o-mini | Multi-event summary |
 
-| 时段 | 时间范围 | EH 重要性 | 发送内容 |
-|------|----------|-----------|----------|
-| **盘前** | 04:00-09:30 | 🔴 关键 | 完整 EH Context |
-| **开盘** | 09:30-10:00 | 🟠 重要 | EH Context + Gap 分析强调 |
-| **盘中** | 10:00-15:00 | 🟡 参考 | 仅 YC/PMH/PML（如果价格在附近）|
-| **尾盘** | 15:00-16:00 | 🟢 低 | 最小化 EH，除非价格在关键位 |
-| **盘后** | 16:00-20:00 | ⚪ 忽略 | 不发送前日 EH |
+---
 
-### 3.2 发送逻辑伪代码
+## 3. EH Context Integration
+
+### 3.1 Time Window Definitions (Eastern Time ET)
+
+| Session | Time Range | EH Importance | Content Sent |
+|---------|------------|---------------|--------------|
+| **Premarket** | 04:00-09:30 | 🔴 Critical | Full EH Context |
+| **Opening** | 09:30-10:00 | 🟠 Important | EH Context + Gap analysis emphasis |
+| **Regular** | 10:00-15:00 | 🟡 Reference | Only YC/PMH/PML (if price nearby) |
+| **Closing** | 15:00-16:00 | 🟢 Low | Minimize EH, unless at key levels |
+| **Afterhours** | 16:00-20:00 | ⚪ Ignore | Don't send previous day EH |
+
+### 3.2 Sending Logic Pseudocode
 
 ```python
 def should_include_eh_context(current_time_et: datetime, price: float, eh_levels: EHLevels) -> dict:
     """
-    根据当前时间和价格位置决定是否发送 EH 数据
+    Decide whether to send EH data based on current time and price position
 
     Returns:
         {
             "include": bool,
             "level": "full" | "partial" | "minimal" | "none",
-            "emphasis": str  # 强调哪些方面
+            "emphasis": str  # What to emphasize
         }
     """
     hour = current_time_et.hour
     minute = current_time_et.minute
 
-    # 盘前 (04:00-09:30)
+    # Premarket (04:00-09:30)
     if hour < 9 or (hour == 9 and minute < 30):
         return {
             "include": True,
@@ -65,7 +65,7 @@ def should_include_eh_context(current_time_et: datetime, price: float, eh_levels
             "emphasis": "premarket_regime_and_gap"
         }
 
-    # 开盘 (09:30-10:00)
+    # Opening (09:30-10:00)
     if hour == 9 and minute >= 30:
         return {
             "include": True,
@@ -73,9 +73,9 @@ def should_include_eh_context(current_time_et: datetime, price: float, eh_levels
             "emphasis": "gap_fill_vs_continuation"
         }
 
-    # 盘中 (10:00-15:00)
+    # Regular session (10:00-15:00)
     if 10 <= hour < 15:
-        # 检查价格是否在 EH 关键位附近 (0.5% 以内)
+        # Check if price is near EH key levels (within 0.5%)
         near_eh_level = is_price_near_eh_levels(price, eh_levels, threshold_pct=0.5)
 
         if near_eh_level:
@@ -91,7 +91,7 @@ def should_include_eh_context(current_time_et: datetime, price: float, eh_levels
                 "emphasis": "none"
             }
 
-    # 尾盘 (15:00-16:00)
+    # Closing (15:00-16:00)
     if 15 <= hour < 16:
         return {
             "include": False,
@@ -99,7 +99,7 @@ def should_include_eh_context(current_time_et: datetime, price: float, eh_levels
             "emphasis": "closing_structure"
         }
 
-    # 盘后/休市
+    # Afterhours/Closed
     return {
         "include": False,
         "level": "none",
@@ -108,7 +108,7 @@ def should_include_eh_context(current_time_et: datetime, price: float, eh_levels
 
 
 def is_price_near_eh_levels(price: float, levels: EHLevels, threshold_pct: float = 0.5) -> str:
-    """检查价格是否在 EH 关键位附近"""
+    """Check if price is near EH key levels"""
 
     checks = [
         ("yc", levels.yc),
@@ -125,7 +125,7 @@ def is_price_near_eh_levels(price: float, levels: EHLevels, threshold_pct: float
     return ""
 ```
 
-### 3.3 EH 数据结构（发送给 LLM）
+### 3.3 EH Data Structure (Sent to LLM)
 
 ```python
 eh_context_for_llm = {
@@ -135,7 +135,7 @@ eh_context_for_llm = {
     "bias": "bullish" | "bearish" | "neutral",
     "bias_confidence": 0.72,
 
-    # Gap 信息
+    # Gap info
     "gap": {
         "direction": "up" | "down",
         "size": 1.30,
@@ -143,77 +143,77 @@ eh_context_for_llm = {
         "status": "unfilled" | "partially_filled" | "filled"
     },
 
-    # 关键位（仅发送相关的）
+    # Key levels (only send relevant ones)
     "key_levels": {
-        "yc": 245.50,      # 始终发送
-        "pmh": 246.80,     # 盘前/开盘发送
-        "pml": 244.20,     # 盘前/开盘发送
-        "gap_fill_target": 245.50  # gap_fill_bias 时发送
+        "yc": 245.50,      # Always send
+        "pmh": 246.80,     # Send during premarket/opening
+        "pml": 244.20,     # Send during premarket/opening
+        "gap_fill_target": 245.50  # Send when gap_fill_bias
     },
 
-    # 盘前形态描述
+    # Premarket structure description
     "pm_structure": "PM extended gap direction, holding above PMH"
 }
 ```
 
 ---
 
-## 4. Prompt 更新
+## 4. Prompt Updates
 
-### 4.1 Quick Update (短评) - 增强版
+### 4.1 Quick Update - Enhanced Version
 
 ```
-根据提供的市场数据，用一段话解读当前盘面结构。
+Based on the provided market data, interpret the current market structure in one paragraph.
 
-语言：{lang_name}
+Language: {lang_name}
 
-数据：
+Data:
 {analysis_json}
 
 {eh_section}
 
-要求：
-- 一段连贯的分析文字，80-150字
-- 解读数据含义，说明当前结构状态
-- 如果行为与趋势冲突要解释原因
-- 带具体数字（价位、RVOL等）
-- 不要标题、bullet、分段，就一段话
-- 不要写操作建议，只做数据解读
+Requirements:
+- One coherent analysis paragraph, 80-150 words
+- Interpret data meaning, explain current structure state
+- If behavior conflicts with trend, explain why
+- Include specific numbers (price levels, RVOL, etc.)
+- No titles, bullets, or sections - just one paragraph
+- No trading recommendations, only data interpretation
 {eh_instruction}
 
-示例（含 EH）：
-开盘跳空高开1.3%后回落测试YC(245.50)，盘前形态为gap_fill_bias，当前价格在PMH(246.80)下方整理。RVOL 0.85偏低，缺乏明确方向。若回补缺口至YC有支撑反弹机会，否则关注245下方是否破位。整体偏向观望。
+Example (with EH):
+Opening gapped up 1.3% then pulled back to test YC(245.50), premarket regime is gap_fill_bias, current price consolidating below PMH(246.80). RVOL 0.85 on the low side, no clear direction. If gap fills to YC with support bounce opportunity, otherwise watch for breakdown below 245. Overall waiting mode.
 ```
 
-其中 `{eh_section}` 和 `{eh_instruction}` 根据时间动态生成：
+Where `{eh_section}` and `{eh_instruction}` are dynamically generated based on time:
 
-**盘前/开盘时段：**
+**Premarket/Opening session:**
 ```
-EH 上下文：
+EH Context:
 {eh_context_json}
 
-额外要求：
-- 必须提及盘前形态（{regime}）和 Gap 方向
-- 解释当前价格相对 PMH/PML/YC 的位置
-- 如果是 gap_fill_bias，说明 gap 回补的可能性
-- 如果是 gap_and_go，说明顺势延续的条件
+Additional Requirements:
+- Must mention premarket regime ({regime}) and Gap direction
+- Explain current price position relative to PMH/PML/YC
+- If gap_fill_bias, explain gap fill probability
+- If gap_and_go, explain continuation conditions
 ```
 
-**盘中时段（价格在 EH 关键位附近）：**
+**Regular session (price near EH key levels):**
 ```
-参考位：
-- YC: {yc}（价格距离 {dist_yc}%）
+Reference Levels:
+- YC: {yc} (price distance {dist_yc}%)
 
-额外要求：
-- 提及价格与 YC 的关系（是否被吸引/突破）
-```
-
-**盘中时段（价格远离 EH）：**
-```
-（不发送 EH 数据）
+Additional Requirements:
+- Mention price relationship to YC (being attracted/breaking)
 ```
 
-### 4.2 5m Full Analysis - EH 增强
+**Regular session (price far from EH):**
+```
+(No EH data sent)
+```
+
+### 4.2 5m Full Analysis - EH Enhanced
 
 ```
 Write an evidence-backed 5m market-structure update for KLineLens.
@@ -264,14 +264,14 @@ OUTPUT FORMAT (strict, use {lang_name}):
 STYLE: No fluff. Use "if/then" language.
 ```
 
-其中 EH 相关占位符：
+Where EH-related placeholders:
 
-**`{eh_tldr_line}`（盘前/开盘）：**
+**`{eh_tldr_line}` (premarket/opening):**
 ```
 - EH Regime: {regime} / Bias: {bias} / Gap: {gap_pct}%
 ```
 
-**`{eh_context_section}`（盘前/开盘）：**
+**`{eh_context_section}` (premarket/opening):**
 ```
 ## EH Context
 - Premarket Regime: {regime}
@@ -280,21 +280,21 @@ STYLE: No fluff. Use "if/then" language.
 - Interpretation: {pm_structure}
 ```
 
-**`{eh_scenario_note}`（gap_fill_bias 时）：**
+**`{eh_scenario_note}` (when gap_fill_bias):**
 ```
 > Gap Fill Note: If price fails at current level, watch for reversion to YC ({yc}).
 ```
 
-**`{eh_risk_note}`（盘前/开盘）：**
+**`{eh_risk_note}` (premarket/opening):**
 ```
 - EH data based on premarket session, may shift at open
 ```
 
 ---
 
-## 5. prepare_analysis_for_llm 更新
+## 5. prepare_analysis_for_llm Updates
 
-### 5.1 新增字段
+### 5.1 New Fields
 
 ```python
 def prepare_analysis_for_llm(
@@ -303,20 +303,20 @@ def prepare_analysis_for_llm(
     timeframe: str,
     price: float,
     include_evidence: bool = True,
-    eh_context: Optional[Dict] = None,  # 新增
-    current_time_et: Optional[datetime] = None  # 新增
+    eh_context: Optional[Dict] = None,  # New
+    current_time_et: Optional[datetime] = None  # New
 ) -> Dict[str, Any]:
     """
-    准备发送给 LLM 的结构化 JSON
+    Prepare structured JSON to send to LLM
 
-    新增：
-    - eh_context: EH 上下文数据
-    - current_time_et: 当前美东时间（用于时间感知逻辑）
+    New:
+    - eh_context: EH context data
+    - current_time_et: Current Eastern Time (for time-aware logic)
     """
 
-    # ... 现有逻辑 ...
+    # ... existing logic ...
 
-    # 新增：EH 上下文处理
+    # New: EH context processing
     eh_data = None
     if eh_context and timeframe in ["1m", "5m"]:
         eh_decision = should_include_eh_context(current_time_et, price, eh_context)
@@ -339,18 +339,18 @@ def prepare_analysis_for_llm(
             }
 
     result = {
-        # ... 现有字段 ...
-        "eh": eh_data  # 新增
+        # ... existing fields ...
+        "eh": eh_data  # New
     }
 
     return result
 ```
 
-### 5.2 辅助函数
+### 5.2 Helper Functions
 
 ```python
 def filter_eh_levels_by_relevance(levels: Dict, level: str) -> Dict:
-    """根据重要性级别过滤 EH levels"""
+    """Filter EH levels by importance level"""
 
     if level == "full":
         return {
@@ -375,7 +375,7 @@ def filter_eh_levels_by_relevance(levels: Dict, level: str) -> Dict:
 
 
 def get_session_name(time_et: datetime) -> str:
-    """获取当前交易时段名称"""
+    """Get current trading session name"""
     hour = time_et.hour
     minute = time_et.minute
 
@@ -393,11 +393,11 @@ def get_session_name(time_et: datetime) -> str:
 
 ---
 
-## 6. Playbook 数据增强
+## 6. Playbook Data Enhancement
 
-### 6.1 Plan EH 类型
+### 6.1 Plan EH Type
 
-当 EH context 存在且为 `gap_fill_bias` 时，playbook 可能包含 `Plan EH`：
+When EH context exists and is `gap_fill_bias`, playbook may include `Plan EH`:
 
 ```python
 {
@@ -410,54 +410,54 @@ def get_session_name(time_et: datetime) -> str:
 }
 ```
 
-### 6.2 LLM 解读要求
+### 6.2 LLM Interpretation Requirements
 
-- 如果 playbook 包含 Plan EH，必须在解读中提及
-- 解释 gap fill 的逻辑：价格倾向于回归 YC
-- 说明失效条件：价格突破 PMH/PML 后 gap fill 失效
-
----
-
-## 7. 示例输出
-
-### 7.1 盘前短评（9:15 ET）
-
-```
-盘前跳空高开1.8%，形态为gap_and_go，价格持续在PMH(248.50)上方运行。RVOL达到2.3，显示买盘强劲。开盘后若能守住247.20支撑并突破249阻力，顺势做多结构成立。风险在于开盘瞬间波动可能触发假突破，建议观察前10分钟成交量确认。
-```
-
-### 7.2 开盘短评（9:45 ET）
-
-```
-开盘后价格从跳空高点248.50回落至YC(245.20)附近震荡，形态转为gap_fill_bias。RVOL 0.92正常，无明确方向。当前价格在PMH(248.50)和YC(245.20)之间整理，若跌破YC完成缺口回补，下方看244支撑；若反弹站稳247则重回gap_and_go。观望为主。
-```
-
-### 7.3 盘中短评（11:30 ET，价格远离 EH）
-
-```
-价格在253-255区间窄幅震荡，RVOL 0.65持续萎缩，市场观望情绪浓厚。上方255阻力测试3次未果，下方253支撑暂时有效。行为模式显示轻微吸筹，但量能不足难以突破。关注午盘后是否有放量选向。
-```
+- If playbook contains Plan EH, must mention in interpretation
+- Explain gap fill logic: price tends to revert to YC
+- Explain invalidation conditions: gap fill fails if price breaks PMH/PML
 
 ---
 
-## 8. 实现检查清单
+## 7. Example Outputs
 
-- [ ] 更新 `prepare_analysis_for_llm()` 添加 EH 参数
-- [ ] 实现 `should_include_eh_context()` 时间判断逻辑
-- [ ] 更新 `PROMPT_QUICK_UPDATE` 支持 EH 占位符
-- [ ] 更新 `PROMPT_5M_ANALYSIS` 支持 EH section
-- [ ] 前端传递 EH context 到 narrative API
-- [ ] 测试不同时段的 EH 数据发送逻辑
-- [ ] 测试 playbook Plan EH 的解读
+### 7.1 Premarket Quick Update (9:15 ET)
+
+```
+Premarket gapped up 1.8%, regime is gap_and_go, price continues running above PMH(248.50). RVOL at 2.3 showing strong buying. After open, if 247.20 support holds and breaks 249 resistance, trend-following long structure established. Risk is opening volatility may trigger fakeout, recommend watching first 10 minutes volume for confirmation.
+```
+
+### 7.2 Opening Quick Update (9:45 ET)
+
+```
+After open, price pulled back from gap high 248.50 to consolidate near YC(245.20), regime shifted to gap_fill_bias. RVOL 0.92 normal, no clear direction. Price currently consolidating between PMH(248.50) and YC(245.20), if breaks below YC completing gap fill, watch 244 support below; if bounces and holds 247 then back to gap_and_go. Waiting mode.
+```
+
+### 7.3 Regular Session Quick Update (11:30 ET, far from EH)
+
+```
+Price in tight 253-255 range, RVOL 0.65 continues shrinking, market in wait-and-see mode. 255 resistance tested 3 times without breaking, 253 support holding for now. Behavior pattern shows mild accumulation but insufficient volume for breakout. Watch for afternoon volume expansion to pick direction.
+```
 
 ---
 
-## 附录：禁止用语
+## 8. Implementation Checklist
 
-| 禁止 | 原因 |
-|------|------|
-| "guaranteed" / "稳赚" / "必赚" | 误导性 |
-| "100% accurate" | 不可能 |
-| "AI predicts price" | 超出能力范围 |
-| "will definitely" | 确定性表述 |
-| "you should buy/sell" | 投资建议 |
+- [ ] Update `prepare_analysis_for_llm()` to add EH parameters
+- [ ] Implement `should_include_eh_context()` time-based logic
+- [ ] Update `PROMPT_QUICK_UPDATE` to support EH placeholders
+- [ ] Update `PROMPT_5M_ANALYSIS` to support EH sections
+- [ ] Frontend passes EH context to narrative API
+- [ ] Test EH data sending logic at different times
+- [ ] Test playbook Plan EH interpretation
+
+---
+
+## Appendix: Prohibited Language
+
+| Prohibited | Reason |
+|------------|--------|
+| "guaranteed" / "sure win" | Misleading |
+| "100% accurate" | Impossible |
+| "AI predicts price" | Beyond capabilities |
+| "will definitely" | Certainty expression |
+| "you should buy/sell" | Investment advice |

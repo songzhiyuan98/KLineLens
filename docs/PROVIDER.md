@@ -39,12 +39,12 @@ KLineLens is a **local tool** — users run it on their own machine and configur
 | Feature | Value |
 |---------|-------|
 | Cost | **Free** (800 API credits/day, 8 req/min) |
-| API Key | Required (免费注册) |
+| API Key | Required (free signup) |
 | Rate Limit | 800 credits/day, 8 requests/minute |
 | Data Delay | **~170ms (near real-time)** |
 | Timeframes | 1m, 5m, 15m, 30m, 1h, 1d |
 | Coverage | US stocks, ETFs, global markets, crypto, forex |
-| Volume Quality | ✅ **可靠的分钟级成交量** |
+| Volume Quality | ✅ **Reliable minute-level volume** |
 
 **Configuration**:
 ```bash
@@ -53,34 +53,34 @@ TWELVEDATA_API_KEY=your_api_key_here
 ```
 
 **Get API Key**:
-1. 访问 https://twelvedata.com/
-2. 注册账户（免费）
-3. 在 Dashboard 获取 API Key
-4. 复制到 `.env` 文件
+1. Visit https://twelvedata.com/
+2. Sign up for free account
+3. Get API Key from Dashboard
+4. Copy to `.env` file
 
 **Advantages**:
 | Feature | Benefit |
 |---------|---------|
-| **可靠分钟成交量** | 量价确认可用，分析更准确 |
-| **接近实时** | ~170ms 延迟，适合日内交易分析 |
-| 800 credits/day | 足够个人使用 |
-| 全球市场覆盖 | 不仅限于美股 |
+| **Reliable minute volume** | Volume-price confirmation available, more accurate analysis |
+| **Near real-time** | ~170ms latency, suitable for intraday analysis |
+| 800 credits/day | Sufficient for personal use |
+| Global market coverage | Not limited to US stocks |
 
 **Limitations**:
 | Limitation | Impact | Workaround |
 |------------|--------|------------|
-| 8 req/min | 限制请求频率 | 利用缓存（60s TTL） |
-| 800 credits/day | 有限免费额度 | 付费 $29/mo 或 $45/年 无限制 |
+| 8 req/min | Rate limit | Use caching (60s TTL) |
+| 800 credits/day | Limited free quota | Paid plan $29/mo or $45/year unlimited |
 
 **Why TwelveData is Recommended**:
-1. **Volume Reliability**: 分钟级成交量数据稳定可靠，是 VSA（量价分析）的基础
-2. **Low Latency**: ~170ms 延迟，比 Yahoo Finance 的 15-20 分钟快得多
-3. **3-Factor Confirmation**: 有了可靠成交量，可以启用完整的突破确认（Structure + Volume + Result）
-4. **Free Tier Sufficient**: 800 credits/day 对于个人分析足够
+1. **Volume Reliability**: Minute-level volume data is stable and reliable, foundation for VSA (Volume Spread Analysis)
+2. **Low Latency**: ~170ms latency, much faster than Yahoo Finance's 15-20 minutes
+3. **3-Factor Confirmation**: With reliable volume, full breakout confirmation enabled (Structure + Volume + Result)
+4. **Free Tier Sufficient**: 800 credits/day sufficient for personal analysis
 
 ### 3.2 Yahoo Finance (Fallback + Free EH Source)
 
-**Status**: ✅ Implemented (含 Extended Hours 支持)
+**Status**: ✅ Implemented (includes Extended Hours support)
 
 | Feature | Value |
 |---------|-------|
@@ -90,35 +90,35 @@ TWELVEDATA_API_KEY=your_api_key_here
 | Data Delay | 15-20 minutes |
 | Timeframes | 1m, 5m, 1d |
 | Coverage | US stocks, ETFs, crypto, forex |
-| Volume Quality | ⚠️ **分钟级数据有缺失** |
-| **Extended Hours** | ✅ **支持 prepost=True** |
+| Volume Quality | ⚠️ **Minute-level data may have gaps** |
+| **Extended Hours** | ✅ **Supports prepost=True** |
 
 **Configuration**:
 ```bash
 PROVIDER=yfinance
 ```
 
-**Extended Hours 支持** (免费方案):
+**Extended Hours Support** (free option):
 
-Yahoo Finance 支持通过 `prepost=True` 获取盘前盘后数据：
+Yahoo Finance supports extended hours data via `prepost=True` parameter:
 
 ```python
-# 获取含 Extended Hours 的数据
+# Get data with Extended Hours
 provider = YFinanceProvider()
 bars = provider.get_bars_extended("TSLA", "1m", "2d")
 ```
 
-| EH 功能 | 支持情况 | 说明 |
-|---------|---------|------|
-| 盘前数据 (04:00-09:30 ET) | ✅ | PMH/PML 提取 |
-| 盘后数据 (16:00-20:00 ET) | ✅ | AHH/AHL 提取 |
-| 实时 EH | ⚠️ 延迟 15-20 分钟 | 非实时，但足够分析用 |
-| EH 成交量 | ⚠️ 可能不完整 | EH 时段本身成交量低 |
+| EH Feature | Support | Notes |
+|------------|---------|-------|
+| Premarket (04:00-09:30 ET) | ✅ | PMH/PML extraction |
+| Afterhours (16:00-20:00 ET) | ✅ | AHH/AHL extraction |
+| Real-time EH | ⚠️ 15-20 min delay | Not real-time, but sufficient for analysis |
+| EH Volume | ⚠️ May be incomplete | EH session has lower volume |
 
-**MVP 推荐用法**:
-- TwelveData 做正盘主数据源
-- Yahoo Finance 补充盘前盘后结构
-- 解决开盘断层问题，免费无成本
+**MVP Recommended Usage**:
+- TwelveData as primary regular session data source
+- Yahoo Finance supplements premarket/afterhours structure
+- Solves opening gap issue, free of cost
 
 **Limitations**:
 | Limitation | Impact | Workaround |
@@ -126,15 +126,15 @@ bars = provider.get_bars_extended("TSLA", "1m", "2d")
 | 1m data max 7 days | Limited history | Use 5m/1d for longer analysis |
 | ~2000 req/day | Rate limit | Cache aggressively (60s TTL) |
 | 15-20 min delay | Not real-time | Acceptable for structure analysis |
-| **分钟成交量不稳定** | **量价确认不可靠** | 切换到 TwelveData/Alpaca |
-| EH 数据偶尔缺失 | 某些 bar 可能丢失 | 用于关键位提取足够 |
+| **Minute volume unstable** | **Volume confirmation unreliable** | Switch to TwelveData/Alpaca |
+| EH data occasionally missing | Some bars may be lost | Sufficient for key level extraction |
 
 **When to Use Yahoo**:
-- 快速测试，不需要 API Key
-- 加密货币数据（BTC-USD, ETH-USD）
-- 日线级别分析（1d timeframe）
-- ✅ **免费获取 Extended Hours 数据**（填补开盘断层）
-- ⚠️ 不推荐用于依赖量价确认的分钟级分析
+- Quick testing, no API Key needed
+- Cryptocurrency data (BTC-USD, ETH-USD)
+- Daily level analysis (1d timeframe)
+- ✅ **Free Extended Hours data** (fills opening gap)
+- ⚠️ Not recommended for minute-level analysis relying on volume confirmation
 
 ### 3.3 Alpaca (Free Alternative)
 
@@ -142,13 +142,13 @@ bars = provider.get_bars_extended("TSLA", "1m", "2d")
 
 | Feature | Value |
 |---------|-------|
-| Cost | **完全免费** |
-| API Key | Required (免费注册) |
-| Rate Limit | 无明显限制 |
-| Data Delay | 接近实时 |
+| Cost | **Completely free** |
+| API Key | Required (free signup) |
+| Rate Limit | No significant limits |
+| Data Delay | Near real-time |
 | Timeframes | 1m, 5m, 1d |
-| Coverage | 美股 |
-| Volume Quality | ✅ 分钟级成交量（IEX 口径） |
+| Coverage | US stocks |
+| Volume Quality | ✅ Minute-level volume (IEX source) |
 
 **Configuration**:
 ```bash
@@ -158,25 +158,25 @@ ALPACA_API_SECRET=your_api_secret_here
 ```
 
 **Get API Key**:
-1. 访问 https://alpaca.markets/
-2. 注册账户（免费，无需入金）
-3. 在 Dashboard 获取 API Key 和 Secret
-4. 复制到 `.env` 文件
+1. Visit https://alpaca.markets/
+2. Sign up for free account (no deposit required)
+3. Get API Key and Secret from Dashboard
+4. Copy to `.env` file
 
 **Advantages**:
 | Feature | Benefit |
 |---------|---------|
-| **完全免费** | 无请求次数限制 |
-| 分钟级成交量 | IEX 交易所数据，约占全市场 2-3% |
-| 接近实时 | 比 yfinance 延迟更低 |
-| 专业级 API | 被量化交易广泛使用 |
+| **Completely free** | No request limits |
+| Minute-level volume | IEX exchange data, ~2-3% of total market |
+| Near real-time | Lower latency than yfinance |
+| Professional API | Widely used in quantitative trading |
 
 **Limitations**:
 | Limitation | Impact | Workaround |
 |------------|--------|------------|
-| IEX 口径成交量 | 非全市场成交量 | 用于趋势分析足够 |
-| 仅美股 | 不支持加密货币 | 使用 yfinance 获取加密 |
-| 需要 API Key | 需要注册 | 免费注册，无信用卡要求 |
+| IEX volume source | Not full market volume | Sufficient for trend analysis |
+| US stocks only | No cryptocurrency support | Use yfinance for crypto |
+| API Key required | Registration needed | Free signup, no credit card |
 
 ### 3.4 Alpha Vantage
 
@@ -185,12 +185,12 @@ ALPACA_API_SECRET=your_api_secret_here
 | Feature | Value |
 |---------|-------|
 | Cost | Free (25 req/day) |
-| API Key | Required (免费注册) |
+| API Key | Required (free signup) |
 | Rate Limit | 25 requests/day (free tier) |
 | Data Delay | 15-20 minutes |
 | Timeframes | 1m, 5m, 1d |
 | Coverage | US stocks, ETFs, forex |
-| Volume Quality | ✅ 高质量分钟级成交量 |
+| Volume Quality | ✅ High-quality minute-level volume |
 
 **Configuration**:
 ```bash
@@ -201,7 +201,7 @@ ALPHAVANTAGE_API_KEY=your_api_key_here
 **Limitations**:
 | Limitation | Impact | Workaround |
 |------------|--------|------------|
-| 25 req/day (free) | 限制请求次数 | 利用缓存，避免频繁刷新 |
+| 25 req/day (free) | Limited requests | Use caching, avoid frequent refreshes |
 
 ### 3.5 Polygon.io (Planned)
 
@@ -214,7 +214,7 @@ ALPHAVANTAGE_API_KEY=your_api_key_here
 | Rate Limit | Depends on plan |
 | Data Delay | Real-time (paid) / 15min (free) |
 | Timeframes | 1m, 5m, 1d, custom |
-| Volume Quality | ✅ 高质量全市场成交量 |
+| Volume Quality | ✅ High-quality full market volume |
 
 ---
 
@@ -231,15 +231,15 @@ TWELVEDATA_API_KEY=your_api_key_here
 ### 4.2 Alternative Setups
 
 ```bash
-# 免费无限制（IEX 成交量口径）
+# Free unlimited (IEX volume source)
 PROVIDER=alpaca
 ALPACA_API_KEY=your_key_here
 ALPACA_API_SECRET=your_secret_here
 
-# 快速测试（无需 Key，但分钟成交量不可靠）
+# Quick testing (no Key needed, but minute volume unreliable)
 PROVIDER=yfinance
 
-# 低频使用（25次/天限制）
+# Low frequency use (25 req/day limit)
 PROVIDER=alphavantage
 ALPHAVANTAGE_API_KEY=your_key_here
 ```
