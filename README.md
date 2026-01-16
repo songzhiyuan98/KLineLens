@@ -2,14 +2,13 @@
   KLineLens
 </h1>
 
-<h3 align="center">
-  Stop guessing. Start seeing market structure.
-</h3>
+<p align="center">
+  <strong>Open-source market structure analysis terminal for intraday & swing trading,<br>
+  with a built-in 0DTE options trading plan module and pluggable strategy framework.</strong>
+</p>
 
 <p align="center">
-  <strong>Free, open-source trading analysis terminal</strong>
-  <br>
-  <em>Real-time structure analysis • Pluggable data providers • Custom trading strategies • AI insights</em>
+  <em>开源 K线结构分析终端：支持日内与波段结构分析，内置 0DTE 期权策略模块，支持开发者贡献自定义策略。</em>
 </p>
 
 <p align="center">
@@ -33,17 +32,26 @@
 
 ---
 
-## 🎯 What is KLineLens?
+## 🎯 Why KLineLens?
 
-KLineLens is an **open-source market structure analysis terminal** designed for day traders and options traders. It provides institutional-grade analysis capabilities for free:
+### ✅ Market Structure for All Timeframes
+Works for **intraday** (1m/5m) and **swing** structure (15m/1h/1d). Know if you're in uptrend, downtrend, or range — with confidence scoring.
 
-- **Real-time structure detection** — Know if you're in uptrend, downtrend, or range
-- **Smart breakout confirmation** — 3-factor validation to avoid fakeouts
-- **Pluggable trading strategies** — Use built-in strategies or code your own
-- **AI-powered interpretation** — GPT-4/Gemini integration for market narratives
-- **Multi-language support** — Full Chinese and English interface
+### ✅ Built-in 0DTE Strategy Module
+State machine driven trade planning for ultra-short-term options:
+```
+WAIT → WATCH → ARMED → ENTER → HOLD → TRIM → EXIT
+```
+Outputs **underlying-level trade plans** — no options quotes required.
 
-> 💡 **Built for 0DTE options traders** who need fast, accurate structure analysis during market hours.
+### ✅ Pluggable Strategy Framework
+Developers can implement and contribute new strategies as modules. Strategies integrate directly into the terminal UI and API.
+
+### ✅ Smart Breakout Confirmation
+3-factor validation to avoid fakeouts: **Close ×2 + RVOL ≥ 1.8 + Result ≥ 0.6 ATR**
+
+### ✅ AI-Powered Interpretation
+GPT-4/Gemini integration for market narratives in English and Chinese.
 
 ---
 
